@@ -1,6 +1,8 @@
-import type { IndexMeta, IndexQuery, PostHandlingObject, PostObject } from '@fiction/core'
+import type { IndexMeta, IndexQuery } from '@fiction/core'
+import type { PostHandlingObject } from '@fiction/posts'
 import type { Card } from '@fiction/site'
 import type { FictionPosts } from './index.js'
+import type { TablePostConfig } from './schema.js'
 import { FictionObject, vue } from '@fiction/core'
 import { Post } from './post.js'
 
@@ -25,11 +27,10 @@ export class PostLoader extends FictionObject<PostLoaderSettings> {
     return { offset: 0, limit: 10, count: 0, order: 'desc', orderBy: 'dateAt' }
   }
 
-  private createPost(postData: PostObject, index: number): Post {
+  private createPost(postData: TablePostConfig, index: number): Post {
     return new Post({
       fictionPosts: this.settings.fictionPosts,
       card: this.settings.card,
-      sourceMode: this.sourceMode.value,
       localSourcePath: `${this.rootKey}.entries.${index}`,
       ...postData,
     })
@@ -92,7 +93,7 @@ export class PostLoader extends FictionObject<PostLoaderSettings> {
 
   private async fetchSingleData(slug: string) {
     const conf = this.config.value
-    let singleEntry: PostObject | undefined
+    let singleEntry: TablePostConfig | undefined
     let index: number | undefined
     if (this.sourceMode.value === 'local') {
       const index = conf?.entries?.findIndex(p => p.slug === slug)

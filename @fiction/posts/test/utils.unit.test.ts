@@ -4,8 +4,8 @@
 import { snap } from '@fiction/core/test-utils'
 import { createSiteTestUtils } from '@fiction/site/test/testUtils'
 import { afterAll, describe, expect, it } from 'vitest'
-import { FictionPosts } from '..'
-import { managePost, managePostIndex } from '../utils'
+import { FictionPosts, Post } from '..'
+import { managePostIndex } from '../utils'
 
 describe('post utils', async () => {
   const testUtils = await createSiteTestUtils()
@@ -17,7 +17,9 @@ describe('post utils', async () => {
   })
 
   it('managePost', async () => {
-    const post = await managePost({ fictionPosts, params: { _action: 'create', fields: { title: 'test', content: 'hello world' } }, caller: 'managePostTest' })
+    const r = await fictionPosts.requests.ManagePost.projectRequest({ _action: 'create', fields: { title: 'test', content: 'hello world' } }, { caller: 'managePostTest' })
+
+    const post = new Post({ fictionPosts, ...r.data?.[0] })
 
     expect(snap(post?.toConfig())).toMatchInlineSnapshot(`
       {

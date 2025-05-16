@@ -1,14 +1,14 @@
-<script lang="ts" setup>
+<script lang="ts" setup generic="T = string">
 import type { FictionRouter, FictionUser, StepConfig } from '@fiction/core/index.js'
-import NavDots from '@fiction/cards/el/NavDots.vue'
-import { useService, vue } from '@fiction/core'
+import { useService, vue, waitFor } from '@fiction/core'
 import XButton from '@fiction/ui/buttons/XButton.vue'
 import ElForm from '@fiction/ui/inputs/ElForm.vue'
 import ElStep from './ElStep.vue'
 
-const { stepConfig, classes = { step: '' } } = defineProps<{
-  stepConfig: StepConfig
+const { stepConfig, classes = { step: '' }, nextDisabled } = defineProps<{
+  stepConfig: StepConfig<T>
   classes?: { step?: string }
+  nextDisabled?: boolean
 }>()
 
 const { fictionRouter } = useService<{
@@ -16,9 +16,7 @@ const { fictionRouter } = useService<{
   fictionUser: FictionUser
 }>()
 
-const steps = vue.computed(() => {
-  return stepConfig.steps.value.filter(s => !s.isJumped)
-})
+const steps = vue.computed(() => stepConfig.steps.value.filter(s => !s.isJumped))
 
 // Track step history
 const stepHistory = vue.ref<number[]>([])
@@ -26,20 +24,20 @@ const stepHistory = vue.ref<number[]>([])
 // Track transition direction
 const transitionDirection = vue.ref<'next' | 'prev'>('next')
 
-const queryStep = vue.computed({
+const queryStep = vue.computed<T>({
   get: () => {
     const routeStep = fictionRouter.vars.value.step as string | undefined
     const s = steps.value
     const defaultStep = s[0].key
 
     return routeStep && s.find(step => step.key === routeStep)
-      ? routeStep
-      : defaultStep
+      ? routeStep as T
+      : defaultStep as T
   },
-  set: async (value: string) => {
+  set: async (value: T) => {
     const s = steps.value
     const step = !value || !s.find(step => step.key === value) ? null : value
-    await fictionRouter.replace({ query: { step } })
+    await fictionRouter.replace({ query: { step: step as string } })
   },
 })
 
@@ -54,6 +52,9 @@ const currentStep = vue.computed(() => {
   return steps.value[stepIndex.value]
 })
 
+// Track if a step load is in progress
+const isStepLoadInProgress = vue.ref(false)
+
 function checkValid() {
   const form = document.querySelector('#stepForm') as
     | HTMLFormElement
@@ -66,6 +67,7 @@ function checkValid() {
 
   return valid
 }
+
 function getStepIndex(args: { dir?: 'prev' | 'next', step?: string }) {
   const { dir, step } = args
 
@@ -96,23 +98,22 @@ function setStepIndex(index: number, options?: { backOnly?: boolean }) {
   if (index === currentIndex || (backOnly && index > currentIndex))
     return
 
-  queryStep.value = steps.value[index]?.key || ''
+  queryStep.value = steps.value[index]?.key
 }
-function setStepKey(key: string) {
+
+function setStepKey(key: T) {
   queryStep.value = key
 }
 
 async function changeStep(args: {
   dir?: 'prev' | 'next'
-  step?: string
+  step?: T
   index?: number
   needsValidation?: boolean
   backOnly?: boolean
   clearHistory?: boolean
 }) {
   const { dir, step, index, needsValidation, backOnly, clearHistory } = args
-
-  const _nextIndex = index ?? getStepIndex({ dir })
 
   if (needsValidation) {
     const valid = checkValid()
@@ -121,15 +122,10 @@ async function changeStep(args: {
       return
   }
 
-  if (dir === 'next' && currentStep.value.onClick) {
-    await currentStep.value.onClick({ changeStep })
-    return
-  }
-
   if (dir) {
     const num = getStepIndex({ dir })
     if (num !== -1) {
-      setStepKey(steps.value[num]?.key || '')
+      setStepKey(steps.value[num]?.key)
     }
 
     if (dir === 'prev') {
@@ -147,6 +143,25 @@ async function changeStep(args: {
     stepHistory.value = []
   }
 }
+
+// Watch for step changes to execute onLoad
+vue.watch(
+  () => currentStep.value,
+  async (newStep, oldStep) => {
+    if (newStep && newStep.onLoad && newStep.key !== oldStep?.key) {
+      isStepLoadInProgress.value = true
+      try {
+        // wait for transition and mounting
+        await waitFor(600)
+        await newStep.onLoad({ changeStep })
+      }
+      finally {
+        isStepLoadInProgress.value = false
+      }
+    }
+  },
+  { immediate: true },
+)
 
 // Watch for index changes to update history and transition
 vue.watch(
@@ -170,10 +185,15 @@ vue.onBeforeUnmount(async () => {
 const hasBack = vue.computed(() => {
   return stepIndex.value > 0 && stepHistory.value.length > 0 && stepIndex.value !== steps.value.length - 1
 })
+
+const isNextButtonDisabled = vue.computed(() => {
+  return isStepLoadInProgress.value || currentStep.value.isLoading || nextDisabled
+})
 </script>
 
 <template>
   <ElForm id="stepForm" class="h-full py-[10vh] md:px-12 relative w-full">
+    <!-- @vue-generic {T} -->
     <ElStep
       :steps
       :current-index="stepIndex"
@@ -208,10 +228,11 @@ const hasBack = vue.computed(() => {
               class="step-submit"
               :loading="step.isLoading"
               :animate="true"
+              :disabled="isNextButtonDisabled"
               data-test-el="step-submit"
               :data-test-id="`step-button-${step.key}`"
               icon-after="i-tabler-arrow-right"
-              @click.prevent="changeStep({ dir: 'next', needsValidation: true })"
+              @click.prevent="step.onClick ? step.onClick({ changeStep }) : changeStep({ dir: 'next', needsValidation: true })"
             >
               {{ step.button?.label || "Next" }}
             </XButton>
@@ -234,59 +255,13 @@ const hasBack = vue.computed(() => {
         </div>
       </template>
     </ElStep>
-    <NavDots
+    <!-- <NavDots
       class="mt-16 z-20 justify-center relative pointer-events-auto"
       :items="steps"
       :active-item="stepIndex"
       wrap-selector="#stepForm"
       @click.stop
       @update:active-item="changeStep({ index: $event, backOnly: true, clearHistory: true })"
-    />
+    /> -->
   </ElForm>
 </template>
-
-<style lang="less">
-.steps {
-  --input-x: 0.7em;
-  --input-y: 0.5em;
-  --input-max-width: 100%;
-  --input-size: 1.4em;
-  --input-bg: theme("colors.theme.50");
-}
-
-.alist-item {
-  transition: all 0.5s ease;
-}
-
-.alist-enter-active {
-  animation: aListIn 0.5s;
-  animation-delay: var(--delay);
-}
-
-.alist-leave-active {
-  animation: aListOut 0.5s;
-  animation-delay: var(--delay);
-}
-
-@keyframes aListIn {
-  0% {
-    opacity: 0;
-    transform: translateX(-30px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes aListOut {
-  0% {
-    opacity: 1;
-    transform: translateX(0);
-  }
-  100% {
-    opacity: 0;
-    transform: translateX(30px);
-  }
-}
-</style>

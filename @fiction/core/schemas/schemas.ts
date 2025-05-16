@@ -1,8 +1,6 @@
 import type { IconName } from '@fiction/ui/lib/systemIcons.js'
 import type { vue } from '../utils/libraries.js'
 import { z } from 'zod'
-import { UserSchema } from '../plugin-user/schema.js'
-import { OrFilterGroupSchema } from '../types/endpoint.js'
 import { ColorScaleSchema, colorThemeUser, colorThemeWithInvert } from '../utils/colors.js'
 
 export const PostStatusSchema = z.enum([
@@ -483,25 +481,4 @@ export const PostSchema = z.object({
 
 }, { description: 'PostSchema' })
 
-export const GlobalQuerySchema = z.object({
-  filters: z.array(OrFilterGroupSchema).optional().describe('OR-based filter groups [@ai]'),
-  sortBy: z.string().optional().describe('Field to sort by'),
-  sortOrder: z.enum(['asc', 'desc']).optional().describe('Sort direction'),
-  search: z.string().optional().describe('Search query [@ai]'),
-  dateRange: z.object({
-    start: z.date().optional(),
-    end: z.date().optional(),
-  }).optional().describe('Date filter range'),
-})
-
-export const PostHandlingSchema = z.object({
-  format: z.enum(['standard', 'local']).optional().describe('Global or inline posts source'),
-  limit: z.number().optional().describe('Max posts to show'),
-  offset: z.number().optional().describe('Number of posts to skip'),
-  entries: z.array(PostSchema).optional().describe('Local post entries [@ai]'),
-  query: GlobalQuerySchema.optional().describe('Filter and sort options [@ai]'),
-  viewSlug: z.string().optional().describe('Base URL for posts'),
-})
-
 export type PostObject = z.infer<typeof PostSchema>
-export type PostHandlingObject = z.infer<typeof PostHandlingSchema>

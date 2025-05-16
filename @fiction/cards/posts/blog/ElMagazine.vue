@@ -8,13 +8,12 @@ import { useSSRData } from '@fiction/core/utils/ssr'
 import { Post } from '@fiction/posts'
 import { loadPosts } from '@fiction/posts/utils/post'
 import PostIndexLayout from '@fiction/ui/posts/PostIndexLayout.vue'
-import XWidgetAbout from '@fiction/ui/posts/XWidgetAbout.vue'
 import CardWrap from '../../CardWrap.vue'
 
 const { card } = defineProps<{ card: Card<UserConfig> }>()
 const { fictionPosts } = useService<{ fictionPosts: FictionPosts }>()
 
-const uc = vue.computed(() => card.userConfig.value || {})
+const uc = vue.computed(() => card.fullConfig.value || {})
 const indexMeta = vue.ref<IndexMeta>({
   offset: 0,
   limit: uc.value.posts?.limit || 12,
@@ -51,13 +50,8 @@ const posts = vue.computed(() => {
   return postData.map((p: TablePostConfig) => new Post({ fictionPosts, card, ...p }))
 })
 
-const config = vue.computed(() => {
-  return {
-    layout: 'blog',
-    featuredCount: uc.value.index?.featuredCount ?? 1,
-    sidebar: uc.value.index?.sidebar || 'right',
-    imagePosition: uc.value.index?.imagePosition,
-  } as const
+const org = vue.computed(() => {
+  return card.site?.org.value
 })
 </script>
 
@@ -69,12 +63,9 @@ const config = vue.computed(() => {
       :posts
       :index-meta="indexMeta"
       :loading
-      :config
+      :header="uc"
+      :featured-count="+(uc.featuredCount ?? 1)"
       @update:index-meta="indexMeta = $event"
-    >
-      <template #sidebar>
-        <XWidgetAbout :card />
-      </template>
-    </PostIndexLayout>
+    />
   </CardWrap>
 </template>

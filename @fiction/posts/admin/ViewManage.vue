@@ -1,8 +1,8 @@
 <script lang="ts" setup>
 import type { NavCardUserConfig } from '@fiction/admin'
-import SettingsBoard from '@fiction/admin/settings/SettingsBoard.vue'
 import { vue } from '@fiction/core'
 import { Card } from '@fiction/site'
+import PagePostIndex from './PagePostIndex.vue'
 
 const { card } = defineProps<{ card: Card }>()
 const loading = vue.ref(false)
@@ -19,17 +19,7 @@ const panels = [
 </script>
 
 <template>
-  <SettingsBoard
-    :loading
-    :card
-    :panels
-    :panel-props="{ card }"
-    :header="{
-      title: 'Posts',
-      subTitle: 'Publish and manage content.',
-      media: { class: `i-tabler-stack` },
-      action: {},
-    }"
-    theme="orange"
-  />
+  <div class="max-w-[920px] mx-auto py-12">
+    <PagePostIndex :card />
+  </div>
 </template>

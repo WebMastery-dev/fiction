@@ -1,8 +1,8 @@
 {
   "endpoints": [
     {
-      "key": "CheckUsername",
-      "path": "/api/utils/db/CheckUsername"
+      "key": "CheckHandle",
+      "path": "/api/utils/db/CheckHandle"
     },
     {
       "key": "ManageUser",
@@ -69,16 +69,8 @@
       "path": "/api/fiction-transactions/EmailAction"
     },
     {
-      "key": "ManageVectors",
-      "path": "/api/fiction-ai/ManageVectors"
-    },
-    {
-      "key": "AiCompletion",
-      "path": "/api/fiction-ai/AiCompletion"
-    },
-    {
-      "key": "AiImage",
-      "path": "/api/fiction-ai/AiImage"
+      "key": "QueryAi",
+      "path": "/api/fiction-ai/QueryAi"
     },
     {
       "key": "ManageCustomer",
@@ -101,8 +93,20 @@
       "path": "/api/stripe-checkout/:action"
     },
     {
-      "key": "hostnameVerify",
-      "path": "/api/direct-domain-verify"
+      "key": "ManageContact",
+      "path": "/api/subscribe/ManageContact"
+    },
+    {
+      "key": "SubscriptionAnalytics",
+      "path": "/api/subscribe/SubscriptionAnalytics"
+    },
+    {
+      "key": "OrgMembers",
+      "path": "/api/fiction-team/OrgMembers"
+    },
+    {
+      "key": "TeamInvite",
+      "path": "/api/fiction-team/TeamInvite"
     },
     {
       "key": "CardQuery",
@@ -125,40 +129,24 @@
       "path": "/api/fiction-sites/ManageDomain"
     },
     {
-      "key": "OrgMembers",
-      "path": "/api/fiction-team/OrgMembers"
-    },
-    {
-      "key": "TeamInvite",
-      "path": "/api/fiction-team/TeamInvite"
-    },
-    {
-      "key": "ManageForm",
-      "path": "/api/forms/ManageForm"
-    },
-    {
-      "key": "ManageSubmission",
-      "path": "/api/forms/ManageSubmission"
-    },
-    {
-      "key": "ManageContact",
-      "path": "/api/subscribe/ManageContact"
-    },
-    {
-      "key": "SubscriptionAnalytics",
-      "path": "/api/subscribe/SubscriptionAnalytics"
-    },
-    {
       "key": "ManagePost",
       "path": "/api/fiction-posts/ManagePost"
+    },
+    {
+      "key": "PostComments",
+      "path": "/api/fiction-posts/PostComments"
+    },
+    {
+      "key": "PostLikes",
+      "path": "/api/fiction-posts/PostLikes"
     },
     {
       "key": "emailTrackingEndpoint",
       "path": "/api/email-tracking/:action?"
     },
     {
-      "key": "ManageBrandGuide",
-      "path": "/api/send/ManageBrandGuide"
+      "key": "ManageOnboard",
+      "path": "/api/onboard/ManageOnboard"
     },
     {
       "key": "posts",

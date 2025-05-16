@@ -1,11 +1,9 @@
-import type { ComplexDataFilter, IndexMeta, PostHandlingObject } from '@fiction/core'
-import type { FictionPosts, Post, TablePostConfig } from '@fiction/posts'
+import type { ComplexDataFilter, IndexMeta } from '@fiction/core'
+import type { FictionPosts, PostHandlingObject, TablePostConfig } from '@fiction/posts'
 import type { Card, Site } from '@fiction/site'
 import type { SiteContentPath } from '@fiction/site/load'
 
 import type { WherePost } from '../endpoint'
-import { getSiteContentPaths } from '@fiction/site/load'
-import { manageSiteIndex } from '@fiction/site/utils/manage'
 
 export type LoadPostsResult = {
   posts: TablePostConfig[]
@@ -106,41 +104,4 @@ export async function getPostPaths(args: {
     type: 'post',
     path: `/p/${post.slug}`,
   }))
-}
-
-export type PostLocation = {
-  url: string
-  site: Site
-  isCanonical?: boolean
-}
-
-export async function findPostLocations(args: { post: Post, fictionPosts: FictionPosts }): Promise<PostLocation[]> {
-  const { post, fictionPosts } = args
-  const fictionSites = fictionPosts.settings.fictionSites
-  if (!post)
-    return []
-
-  // Get all sites for the organization
-  const { sites } = await manageSiteIndex({ fictionSites, params: { _action: 'list' } })
-
-  const allLocations = await Promise.all(sites.map(async (site) => {
-    // Get all content paths for this site
-    const contentPaths = await getSiteContentPaths(site)
-
-    // Filter paths that match this post
-    const postPaths = contentPaths.filter(path => path.type === 'post' && path.meta?.postId === post.postId)
-
-    const siteUrl = site.origin.value
-
-    // Format the results
-    return postPaths.map((pathDetails) => {
-      const url = new URL(pathDetails.path, siteUrl).toString()
-      return { url, site }
-    })
-  }))
-
-  // Flatten the results
-  const locations = allLocations.flat()
-
-  return locations
 }

@@ -1,4 +1,4 @@
-import type { FictionRouter, FontFamily } from '@fiction/core'
+import type { FictionRouter, FontFamily, SocialAccounts } from '@fiction/core'
 import type { Contact } from '@fiction/plugins/plugin-contact/schema.js'
 import type { Card, CardTemplate } from './card.js'
 import type { FictionSites, ThemeConfig } from './index.js'
@@ -7,7 +7,7 @@ import type { ToolKeys } from './plugin-builder/tools/tools.js'
 import type { PageRegion, TableSiteConfig } from './tables.js'
 import type { LayoutOrder } from './utils/layout.js'
 import type { QueryVarHook } from './utils/site.js'
-import { deepMerge, FictionObject, localRef, objectId, resetUi, Shortcodes, shortId, vue, waitFor } from '@fiction/core'
+import { deepMerge, FictionObject, objectId, resetUi, Shortcodes, vue, waitFor } from '@fiction/core'
 import { TypedEventTarget } from '@fiction/core/utils/eventTarget.js'
 import { AutosaveUtility } from '@fiction/core/utils/save.js'
 import { siteEditorController } from './plugin-builder/tools/tools.js'
@@ -15,6 +15,7 @@ import { activeSiteFont } from './utils/fonts.js'
 import { SiteFrameTools } from './utils/frame.js'
 import { SiteHistory } from './utils/history.js'
 import { flattenCards, setLayoutOrder } from './utils/layout.js'
+import { siteLink } from './utils/manage.js'
 import { activePageIdByRoute, getPageById, getViewMap } from './utils/page.js'
 import { addNewCard, removeCard } from './utils/region.js'
 import { saveSite, scrollActiveCardIntoView, setSections, setupRouteWatcher, updateSite } from './utils/site.js'
@@ -51,12 +52,8 @@ export class Site<T extends SiteSettings = SiteSettings> extends FictionObject<T
   siteRouter = this.settings.siteRouter
   siteMode = vue.ref(this.settings.siteMode || 'standard')
   editToggle = vue.ref(false)
-  isEditable = vue.computed(() => {
-    return ['editable', 'designer'].includes(this.siteMode.value) || false
-  })
-
+  isEditable = vue.computed(() => ['editable', 'designer'].includes(this.siteMode.value) || false)
   isPrimary = vue.ref(this.settings.isPrimary)
-
   isDesigner = vue.computed(() => ['designer', 'coding'].includes(this.siteMode.value) || false)
   frame = new SiteFrameTools({ site: this, relation: this.isDesigner.value ? 'parent' : 'child' })
   events = new TypedEventTarget<SiteEventMap>({ fictionEnv: this.fictionSites.fictionEnv })
@@ -64,7 +61,6 @@ export class Site<T extends SiteSettings = SiteSettings> extends FictionObject<T
   isProd = vue.ref(this.settings.isProd ?? this.fictionSites.fictionEnv?.isProd.value)
   title = vue.ref(this.settings.title)
   status = vue.ref(this.settings.status)
-  subDomain = vue.ref(this.settings.subDomain || shortId({ prefix: `${this.title.value || 'site'}-`, len: 3 }))
   handle = vue.ref(this.settings.handle)
   isAnimationDisabled = vue.ref(false)
   themeId = vue.ref(this.settings.themeId)
@@ -81,20 +77,15 @@ export class Site<T extends SiteSettings = SiteSettings> extends FictionObject<T
   fullConfig = vue.computed(() => deepMerge([this.themeConfig.value?.userConfig, this.userConfig.value]))
 
   org = vue.computed(() => deepMerge([this.themeConfig.value?.org, this.settings.org]))
-  hostname = vue.computed(() => {
-    const orgHandle = this.org.value?.handle
-    const sub = this.settings.isPrimary && orgHandle ? orgHandle : `stage-${this.handle.value}`
-    return this.isProd.value ? `${sub}.fiction.com` : `${sub}.lan.com`
-  })
 
-  origin = vue.computed(() => {
-    const port = this.fictionSites.settings.fictionAppSites?.port.value
-    const hostname = this.hostname.value
-    return this.isProd.value ? `https://${hostname}` : `http://${hostname}:${port}`
+  subDomain = vue.computed(() => {
+    const orgHandle = this.org.value?.handle
+    return this.isPrimary.value && orgHandle ? orgHandle : `stage-${this.handle.value}`
   })
 
   url = vue.computed(() => {
-    return `${this.origin.value}${this.currentPath.value}`
+    const origin = this.fictionSites.getOrigin({ subDomain: this.subDomain.value })
+    return `${origin}${this.currentPath.value}`
   })
 
   constructor(settings: T) {
@@ -207,7 +198,17 @@ export class Site<T extends SiteSettings = SiteSettings> extends FictionObject<T
   shortcodes = new Shortcodes({
     fictionEnv: this.fictionSites.fictionEnv,
     shortcodes: [
-      { shortcode: 'brand_name', handler: () => this.org.value?.orgName || '' },
+      { shortcode: 'name', handler: () => this.org.value?.orgName || '' },
+      { shortcode: 'handle', handler: () => this.org.value?.handle || '' },
+      { shortcode: 'headline', handler: () => this.org.value?.headline || '' },
+      { shortcode: 'about', handler: () => this.org.value?.about || '' },
+      { shortcode: 'avatar', handler: () => {
+        return this.org.value?.avatar?.url || ''
+      } },
+      { shortcode: 'social_url', handler: ({ attributes }) => {
+        const src = attributes?.src as keyof SocialAccounts | undefined
+        return (src && this.org.value?.accounts?.[src || '']) || ''
+      } },
     ],
   })
 
@@ -350,7 +351,7 @@ export class Site<T extends SiteSettings = SiteSettings> extends FictionObject<T
 
     setLayoutOrder({ site: this, order })
 
-    this.syncChange({ caller: 'updateLayout', withHistory: true, onlyKeys: ['pages', 'sections'] })
+    this.syncChange({ caller: 'updateLayout', withHistory: true, onlyKeys: ['pages'] })
 
     this.isAnimationDisabled.value = false
   }
@@ -404,9 +405,10 @@ export class Site<T extends SiteSettings = SiteSettings> extends FictionObject<T
       throw new Error('FictionContact is not available')
     }
 
-    const targetOrgId = this.org.value.orgId
+    const targetOrgId = this.org.value.orgId || this.settings.orgId
     if (!targetOrgId) {
-      throw new Error('Organization ID is not available')
+      this.log.error('No site orgId found for active contact', { data: { site: this.toConfig() } })
+      return
     }
 
     const response = await fictionContact?.requests.ManageContact.request({ _action: 'current', targetOrgId }, { caller: 'getCurrentContact' })

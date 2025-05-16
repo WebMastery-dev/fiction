@@ -3,11 +3,12 @@ import { z } from 'zod'
 
 export const colorThemeBright = ['teal', 'cyan', 'sky', 'blue', 'indigo', 'violet', 'purple', 'fuchsia', 'pink', 'rose', 'red', 'orange', 'amber', 'yellow', 'lime', 'green', 'emerald'] as const
 export const colorTheme = [...colorThemeBright, 'slate', 'gray', 'zinc', 'neutral', 'stone', 'black', 'white'] as const
-export const onlyUserColorTheme = ['primary', 'default', 'overlay', 'theme'] as const
+export const onlyUserColorTheme = ['primary', 'default', 'overlay', 'theme', 'muted'] as const
 export const colorThemeUser = [...onlyUserColorTheme, ...colorTheme] as const
 
 // Create a union type that includes both regular and inverted colors
-export type ColorThemeBright = (typeof colorThemeBright)[number]
+export const ColorThemeBrightSchema = z.enum(colorThemeBright)
+export type ColorThemeBright = z.infer<typeof ColorThemeBrightSchema>
 export type ColorTheme = (typeof colorTheme)[number]
 export type ColorThemeUser = (typeof colorThemeUser)[number]
 

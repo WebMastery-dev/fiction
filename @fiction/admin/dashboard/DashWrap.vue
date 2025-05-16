@@ -79,10 +79,8 @@ const bottomNav = vue.computed<NavListItem[]>(() => {
   const activeOrganization = fictionUser.activeOrganization.value
   return [
     {
-      label: activeOrganization?.orgName || 'Settings',
-      subLabel: 'Brand Workspace',
+      label: 'Settings',
       href: `/settings`,
-      media: activeOrganization?.avatar,
       icon: { class: 'i-tabler-settings' },
       isActive: currentViewId === 'settings',
     },
@@ -97,7 +95,7 @@ const accountMenu: vue.ComputedRef<IndexItem[]> = vue.computed(() => {
       icon: 'i-tabler-building-cog',
     },
     {
-      label: 'Account Settings',
+      label: 'User Settings',
       href: card.link({ path: '/settings/account' }),
       icon: 'i-tabler-user-cog',
     },

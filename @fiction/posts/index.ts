@@ -4,9 +4,10 @@ import type { AdminTemplates } from '@fiction/admin/theme'
 import type { FictionAnalytics } from '@fiction/analytics'
 import type { FictionDb, FictionEmail, FictionMedia, FictionPluginSettings, FictionRevision, FictionRouter, FictionServer, FictionUser } from '@fiction/core'
 import type { FictionContact } from '@fiction/plugin-contact'
+import type { FictionAi } from '@fiction/plugins/plugin-ai'
 import type { FictionSites } from '@fiction/site'
 import { cardConfig } from '@fiction/cards'
-import { FictionPlugin, orgFields, safeDirname, vue } from '@fiction/core'
+import { FictionPlugin, safeDirname, vue } from '@fiction/core'
 import { cardTemplate } from '@fiction/site/card.js'
 import { QueryManagePost } from './endpoint'
 import { QueryPostComments, QueryPostLikes } from './endpointMeta'
@@ -14,7 +15,6 @@ import { FictionPublish } from './publish'
 import { getRoutes } from './routes'
 import { tables } from './schema'
 import { createHelloWorldPost } from './utils/index.js'
-import { getWidgets } from './widgets'
 
 export * from './post'
 
@@ -30,6 +30,7 @@ export type FictionPostsSettings = {
   fictionRouter: FictionRouter
   fictionContact: FictionContact
   fictionSites: FictionSites
+  fictionAi: FictionAi
 } & FictionPluginSettings
 
 export * from './schema'
@@ -40,7 +41,7 @@ export * from './utils/links.js'
 function getTemplates() {
   return [
     cardTemplate({ templateId: 'tplManagePost', el: vue.defineAsyncComponent(() => import('./admin/ViewManage.vue')) }),
-    cardTemplate({ templateId: 'tplManagePostEdit', el: vue.defineAsyncComponent(() => import('./admin/PagePostEdit.vue')) }),
+    cardTemplate({ templateId: 'tplManagePostEdit', el: vue.defineAsyncComponent(() => import('./admin/EditorWrap.vue')) }),
     cardTemplate({ templateId: 'tplManagePostPreview', el: vue.defineAsyncComponent(() => import('./admin/ViewPreview.vue')) }),
   ]
 }
@@ -48,7 +49,6 @@ function getTemplates() {
 type PostAdminTemplates = AdminTemplates & ReturnType<typeof getTemplates>
 
 export class FictionPosts extends FictionPlugin<FictionPostsSettings> {
-  widgets = getWidgets({ fictionPosts: this, ...this.settings })
   queries = {
     ManagePost: new QueryManagePost({ fictionPosts: this, ...this.settings }),
     PostComments: new QueryPostComments({ fictionPosts: this, ...this.settings }),
@@ -79,7 +79,6 @@ export class FictionPosts extends FictionPlugin<FictionPostsSettings> {
   }
 
   hooks() {
-
     this.settings.fictionUser.hooks.on('newOrg', 'posts:defaults', async (args) => {
       const { org, userId, withDefaults } = args
       if (withDefaults && org.orgId) {
@@ -90,9 +89,6 @@ export class FictionPosts extends FictionPlugin<FictionPostsSettings> {
 
   adminUi() {
     const { fictionAdmin } = this.settings
-    const w = Object.values(this.widgets)
-    fictionAdmin.widgetRegister.value.push(...w)
-    fictionAdmin.addToWidgetArea('homeMain', w.map(widget => ({ key: widget.key })))
 
     fictionAdmin.addFeature({
       key: 'posts',

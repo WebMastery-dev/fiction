@@ -1,7 +1,5 @@
 <script lang="ts" setup>
 import type { Post } from '@fiction/posts'
-import { dayjs, vue } from '@fiction/core'
-import { countWords } from '@fiction/core/utils/wordCount'
 import XLink from '@fiction/ui/common/XLink.vue'
 import XMedia from '@fiction/ui/media/XMedia.vue'
 import PostItemMeta from './PostItemMeta.vue'
@@ -44,10 +42,10 @@ const props = defineProps<{
 
         <!-- Excerpt -->
         <p
-          v-if="post.subTitle?.value || post.excerpt?.value"
+          v-if="post.subTitle?.value"
           class="text-white/90 text-base md:text-lg mb-6 line-clamp-3 max-w-2xl"
         >
-          {{ post.subTitle?.value || post.excerpt?.value }}
+          {{ post.subTitle?.value }}
         </p>
 
         <PostItemMeta
@@ -58,8 +56,6 @@ const props = defineProps<{
             hoverOnly: 'opacity-0 group-hover/post-item:opacity-100',
             textSize: 'text-xs @sm/post-item:text-sm',
           }"
-          :like-count="123"
-          :comment-count="23"
         />
       </div>
     </div>

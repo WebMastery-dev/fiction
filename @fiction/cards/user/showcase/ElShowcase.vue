@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import type { MediaObject } from '@fiction/core'
 import type { FictionPosts, Post } from '@fiction/posts'
 import type { Card } from '@fiction/site'
 import type { UserConfig } from './config'
@@ -39,17 +38,6 @@ vue.onMounted(async () => {
 const activeitemIndex = vue.ref(-1)
 const activeItem = vue.computed(() => posts.value[activeitemIndex.value])
 const proseClass = `prose dark:prose-invert prose-sm md:prose-lg max-w-[45ch]`
-
-function featuredImageAspect(media: MediaObject) {
-  const img = media
-  const h = img?.height
-  const w = img?.width
-
-  if (!img || !w || !h)
-    return 'aspect-[4/3]'
-
-  return w > h ? 'aspect-square max-h-[70dvh]' : 'aspect-[4/3]'
-}
 
 function gridImageAspect() {
   const aspectMappings: { [key: string]: string } = {

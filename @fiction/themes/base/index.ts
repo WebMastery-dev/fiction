@@ -1,13 +1,15 @@
+import { cardConfig } from '@fiction/cards'
 import { getCardTemplates } from '@fiction/cards/index.js'
 import { safeDirname } from '@fiction/core'
 import { Theme } from '@fiction/site/theme.js'
+import { getPageTemplates } from './pages/index.js'
 
 export const theme = new Theme({
   root: safeDirname(import.meta.url),
   themeId: 'base',
   title: 'Base',
-  subTitle: 'Base theme for all Fiction workspaces',
-  description: 'The base theme provides a standard blog layout with a home page, blog page, and contact page.',
+  subTitle: 'Base theme.',
+  description: 'The base theme provides a standard blog layout.',
   icon: 'i-tabler-layout-grid',
   colorTheme: 'blue',
   version: '1.0.0',
@@ -18,9 +20,30 @@ export const theme = new Theme({
 
   isPublic: true,
   getTemplates: () => getCardTemplates({ caller: 'baseTheme' }),
-  getConfig: async (args) => {
-    const { getConfig } = await import('./config')
-
-    return getConfig(args)
+  getPageTemplates: () => getPageTemplates(),
+  getConfig: async () => {
+    return {
+      pages: [
+        cardConfig({
+          slug: 'home',
+          isHome: true,
+          nav: 'hide',
+          cards: [
+            cardConfig({
+              templateId: 'cardBlogV1',
+              userConfig: {
+                featuredCount: 1,
+                title: '[@name]',
+                subTitle: '[@headline]',
+                media: {
+                  type: 'image',
+                  url: '[@avatar]',
+                },
+              },
+            }),
+          ],
+        }),
+      ],
+    }
   },
 })

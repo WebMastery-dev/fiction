@@ -1,16 +1,13 @@
 import type { Card } from '@fiction/site'
 import type { FictionPosts } from '.'
-import type { EmailConfig, TablePostConfig } from './schema'
+import type { TablePostConfig } from './schema'
 import { FictionObject, objectId, vue } from '@fiction/core'
 import { AutosaveUtility } from '@fiction/core/utils/save'
-import { postLink } from '.'
-import { managePost } from './utils'
 import { PostLike } from './utils/like'
 
 export type PostConfig = {
   fictionPosts?: FictionPosts
   card?: Card
-  sourceMode?: 'local' | 'standard'
   noAutoSave?: boolean
   localSourcePath?: string
   viewSlug?: string
@@ -23,20 +20,22 @@ export class Post extends FictionObject<PostConfig> {
   emailStatus = vue.ref(this.settings.emailStatus || 'draft')
   title = vue.ref(this.settings.title || '')
   subTitle = vue.ref(this.settings.subTitle || '')
-  excerpt = vue.ref(this.settings.excerpt || '')
   content = vue.ref(this.settings.content || '')
   slug = vue.ref(this.settings.slug || '')
-  href = vue.computed(() => postLink({ card: this.settings.card, slug: this.slug.value }))
+  href = vue.computed(() => `/p/${this.slug.value}`)
   media = vue.ref(this.settings.media)
   theme = vue.ref(this.settings.theme || 'primary')
+  audience = vue.ref(this.settings.audience || 'all')
+  subject = vue.ref(this.settings.subject || '')
+  preview = vue.ref(this.settings.preview || '')
+  testEmails = vue.ref(this.settings.testEmails || [])
   tags = vue.ref(this.settings.tags || [])
   categories = vue.ref(this.settings.categories || [])
   authors = vue.ref(this.settings.authors || [])
   dateAt = vue.ref(this.settings.dateAt || new Date().toISOString())
   userConfig = vue.ref(this.settings.userConfig || {})
-  sender = vue.ref(this.settings.sender || {})
   visibility = vue.ref(this.settings.visibility || 'public')
-  emailConfig = vue.ref({ filters: [], target: 'all', ...this.settings.emailConfig } as EmailConfig)
+  emailConfig = vue.ref(this.settings.emailConfig)
   isFeatured = vue.ref(this.settings.isFeatured || false)
   likeCount = vue.ref(this.settings.likeCount || 0)
   commentCount = vue.ref(this.settings.commentCount || 0)
@@ -100,8 +99,6 @@ export class Post extends FictionObject<PostConfig> {
       'tags',
       'categories',
       'authors',
-      'sites',
-      'sender',
     ]
     const entries = Object.entries(postConfig).filter(([key]) => availableKeys.includes(key))
     entries.forEach(([key, value]) => {
@@ -120,6 +117,8 @@ export class Post extends FictionObject<PostConfig> {
 
       this.settings = { ...this.settings, [key as keyof TablePostConfig]: value }
     })
+
+    this.hasChanges.value = true
   }
 
   async save(args: { isAutosave?: boolean, caller: string }) {
@@ -134,11 +133,11 @@ export class Post extends FictionObject<PostConfig> {
     const fields = this.toConfig()
 
     const params = { _action: 'update', where: { postId: this.postId }, fields, isAutosave } as const
-    const p = await managePost({ fictionPosts: this.settings.fictionPosts, params, caller: 'savePost', disableNotify: isAutosave })
+    const r = await this.settings.fictionPosts.requests.ManagePost.projectRequest(params, { caller, disableNotify: isAutosave })
 
     // don't update if autosave was called again during saving to prevent missing changes
     if (!isAutosave || !this.saveUtil.isDirty.value)
-      this.update(p?.toConfig() || {}, { caller: `savePost-${caller}`, noSave: true })
+      this.update(r.data?.[0] || {}, { caller: `savePost-${caller}`, noSave: true })
   }
 
   async delete() {
@@ -148,8 +147,8 @@ export class Post extends FictionObject<PostConfig> {
     else {
       this.log.info('Deleting post')
     }
+    await this.settings.fictionPosts.requests.ManagePost.projectRequest({ _action: 'delete', where: { postId: this.postId } }, { caller: 'deletePost' })
 
-    await managePost({ fictionPosts: this.settings.fictionPosts, params: { _action: 'delete', where: { postId: this.postId } }, caller: 'deletePost' })
     this.settings.fictionPosts.cacheKey.value++
   }
 
@@ -158,31 +157,38 @@ export class Post extends FictionObject<PostConfig> {
 
     return {
       ...rest,
+      status: this.status.value,
+      emailStatus: this.emailStatus.value,
+
       slug: this.slug.value,
       postId: this.postId,
       title: this.title.value,
       subTitle: this.subTitle.value,
-      excerpt: this.excerpt.value,
       content: this.content.value,
-      userConfig: this.userConfig.value,
-      emailConfig: this.emailConfig.value,
-      sender: this.sender.value,
-      visibility: this.visibility.value,
-      isFeatured: this.isFeatured.value,
-      priority: this.priority.value,
       media: this.media.value,
-      theme: this.theme.value,
-      dateAt: this.dateAt.value,
-      hasChanges: this.hasChanges.value,
-      publishAt: this.publishAt.value,
-      updatedAt: this.updatedAt.value,
-      publishMode: this.publishMode.value,
-      status: this.status.value,
-      emailStatus: this.emailStatus.value,
       tags: this.tags.value,
       categories: this.categories.value,
       authors: this.authors.value,
-      wordCount: this.wordCount.value,
+
+      subject: this.subject.value,
+      preview: this.preview.value,
+      audience: this.audience.value,
+      testEmails: this.testEmails.value,
+
+      visibility: this.visibility.value,
+      isFeatured: this.isFeatured.value,
+      priority: this.priority.value,
+
+      theme: this.theme.value,
+
+      dateAt: this.dateAt.value,
+      publishAt: this.publishAt.value,
+      publishMode: this.publishMode.value,
+
+      userConfig: this.userConfig.value,
+      emailConfig: this.emailConfig.value,
+
+      hasChanges: this.hasChanges.value,
     }
   }
 
@@ -197,12 +203,22 @@ export class Post extends FictionObject<PostConfig> {
       ? window.location.origin + this.href.value
       : this.href.value
 
+    this.log.info('Link copied to clipboard:', { data: { url } })
+
     // Copy to clipboard
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
       navigator.clipboard.writeText(url)
+
       this.settings.fictionPosts?.fictionEnv.events.emit('notify', {
         type: 'success',
         message: 'Link copied to clipboard',
+        duration: 2000,
+      })
+    }
+    else {
+      this.settings.fictionPosts?.fictionEnv.events.emit('notify', {
+        type: 'error',
+        message: 'Failed to copy link to clipboard',
         duration: 2000,
       })
     }

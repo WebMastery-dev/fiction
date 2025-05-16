@@ -34,20 +34,12 @@ describe('settings e2e', async () => {
         { type: 'click', selector: `[data-test-id="description-edit-button"]` },
         { type: 'fill', selector: `[data-option-path="${pathCheck('description', schema)}"] input`, text: 'Test Description' },
         { type: 'click', selector: `[data-test-id="description-modal-apply"]` },
-        { type: 'click', selector: `[data-test-id="senderEmail-edit-button"]` },
-        { type: 'fill', selector: `[data-option-path="${pathCheck('senderEmail', schema)}"] input`, text: 'test@example.com' },
-        { type: 'click', selector: `[data-test-id="senderEmail-modal-apply"]` },
-        { type: 'click', selector: `[data-test-id="termsUrl-edit-button"]` },
-        { type: 'fill', selector: `[data-option-path="${pathCheck('legal.termsUrl', schema)}"] input`, text: 'https://www.test.com/url' },
-        { type: 'click', selector: `[data-test-id="termsUrl-modal-apply"]` },
         { type: 'click', selector: `[data-test-id="saveButton"]`, waitAfter: 3000 },
         { type: 'dataValue', selector: `[data-form-engine-depth="0"]`, onValue: (value) => {
           const v = value as Organization
 
           expect(v.orgName).toBe('Org Name Test')
           expect(v.orgEmail).toBe('billing@example.com')
-          expect(v.senderEmail).toBe('test@example.com')
-          expect(v.senderName).toBe('Alvin the Chipmunk')
         } },
       ],
     })

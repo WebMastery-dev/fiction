@@ -1,117 +1,164 @@
 <script lang="ts" setup>
+import type { PostObject } from '@fiction/core'
 import type { Post } from '@fiction/posts'
+import type { Card } from '@fiction/site'
 import { vue } from '@fiction/core'
-import ElSpinner from '../loaders/ElSpinner.vue'
+import XText from '../common/XText.vue'
+import EffectFitText from '../effect/EffectFitText.vue'
+import XMedia from '../media/XMedia.vue'
 import PostFeature from './PostFeature.vue'
 import PostItem from './PostItem.vue'
 
 defineOptions({ name: 'PostLayout' })
 
-const props = defineProps<{
+const { posts, featuredCount = 1, layout = 'magazine', sortBy = 'latest', header } = defineProps<{
   posts: Post[]
   loading?: boolean
   sortBy?: 'latest' | 'popular'
-  title?: string
-  about?: {
-    title: string
-    content: string
-  }
-  config?: {
-    layout?: 'magazine' | 'blog'
-    featuredCount?: number
-    sidebar?: 'left' | 'right' | 'none'
-    imagePosition?: 'top' | 'left' | 'right' | 'cover' | 'none'
-  }
+  header?: PostObject
+  layout?: 'magazine' | 'blog'
+  featuredCount?: number
+  hasSidebar?: boolean
+  card?: Card
 }>()
 
 const emit = defineEmits<{
   (e: 'update:sortBy', value: 'latest' | 'popular'): void
 }>()
 
-// Simple configuration with sensible defaults
-const config = vue.computed(() => ({
-  layout: props.config?.layout || 'blog',
-  featuredCount: props.config?.featuredCount ?? 1,
-  sidebar: props.config?.sidebar || 'right',
-  imagePosition: props.config?.imagePosition || (props.config?.layout === 'magazine' ? 'top' : 'right'),
-}))
-
 // Separate featured posts from regular content
 const featuredPosts = vue.computed(() => {
-  if (config.value.featuredCount <= 0 || !props.posts.length)
+  if (featuredCount <= 0 || !posts.length)
     return []
 
   // First try to find posts marked as featured
-  const explicitFeatured = props.posts.filter(post => post.isFeatured?.value)
+  const explicitFeatured = posts.filter(post => post.isFeatured?.value)
 
   if (explicitFeatured.length > 0) {
-    return explicitFeatured.slice(0, config.value.featuredCount)
+    return explicitFeatured.slice(0, featuredCount)
   }
 
   // Otherwise, use the most recent posts as featured
-  return props.posts.slice(0, config.value.featuredCount)
+  return posts.slice(0, featuredCount)
 })
 
 const regularPosts = vue.computed(() => {
   const featuredIds = new Set(featuredPosts.value.map(post => post.postId))
-  return props.posts.filter(post => !featuredIds.has(post.postId))
+  return posts.filter(post => !featuredIds.has(post.postId))
 })
 
-// Determine grid columns based on layout
-const gridClasses = vue.computed(() => {
-  if (config.value.layout === 'magazine') {
-    return 'grid grid-cols-1 @[500px]/post-list:grid-cols-2 @[1000px]/post-list:grid-cols-3 gap-8'
-  }
-  return ' divide-y divide-theme-700/50'
-})
+// Helper for tab styling
+function getTabClasses(tabType: 'latest' | 'popular' | 'archive') {
+  const s = sortBy || 'latest'
+  return [
+    'py-2 px-4 text-sm font-medium transition-colors duration-200 border-b-2',
+    s === tabType
+      ? 'border-theme-0 text-theme-0'
+      : 'border-transparent text-theme-500 hover:text-theme-700 dark:text-theme-400 dark:hover:text-theme-300',
+  ].join(' ')
+}
 </script>
 
 <template>
   <div
-    class="post-layout"
-    :class="config.sidebar === 'none' && config.layout === 'blog' ? 'max-w-2xl' : ''"
+    class="post-layout grid grid-cols-1 gap-12 xl:gap-16"
   >
-    <div v-if="loading" class="flex items-center justify-center p-12">
-      <ElSpinner class="size-8 text-theme-600" />
-    </div>
-    <template v-else>
-      <!-- Featured Posts Section -->
-      <div v-if="featuredPosts.length > 0" class="featured-posts space-y-12 border-b pb-10 mb-10 border-theme-700/50">
-        <PostFeature
-          v-for="post in featuredPosts"
-          :key="`featured-${post.postId}`"
-          :post="post"
+    <div v-if="header?.title" class="flex gap-16 xl:gap-24 items-center">
+      <!-- Content section -->
+      <div class="flex-1">
+        <!-- Headline with fit text -->
+        <div v-if="header?.title" class="relative z-10">
+          <EffectFitText
+            :content="header.title"
+            :min-size="80"
+            :max-size="160"
+            :lines="1"
+          >
+            <XText
+              :card
+              tag="span"
+              :model-value="header.title"
+              animate="rise"
+              class="block font-bold x-font-title uppercase"
+            />
+          </EffectFitText>
+        </div>
+
+        <!-- Subheading text -->
+        <XText
+          v-if="header?.subTitle"
+          :card
+          :model-value="header.subTitle"
+          animate="rise"
+          class="text-theme-400 text-2xl xl:text-3xl mix-blend-difference z-0 relative mt-2"
         />
       </div>
 
-      <!-- Main Content Area with Optional Sidebar -->
-      <div class="post-content-area flex flex-col lg:flex-row gap-12 " :class="config.sidebar === 'left' ? 'lg:flex-row-reverse' : ''">
-        <!-- Main Posts Grid -->
-        <div class="w-full @container/post-list grow" :class="config.sidebar !== 'none' ? 'lg:w-[61.8%]' : 'lg:w-full'">
-          <!-- Post Tabs -->
-          <div class="flex gap-4 items-center">
-            <button
-              :class="!sortBy || sortBy === 'latest' ? 'cursor-default' : 'text-theme-500'"
-              @click="emit('update:sortBy', 'latest')"
-            >
-              Latest
-            </button>
-            <button
-              :class="sortBy === 'popular' ? 'cursor-default' : 'text-theme-500'"
-              @click="emit('update:sortBy', 'popular')"
-            >
-              Popular
-            </button>
-          </div>
+      <!-- Featured image - responsive approach -->
+      <div
+        v-if="header?.media?.url"
+        class="w-24 sm:w-28 flex-shrink-0"
+      >
+        <XMedia
+          :media="header?.media"
+          class="aspect-square w-full rounded-full overflow-hidden ring-2 xl:ring-4 ring-white"
+          itemprop="image"
+        />
+      </div>
+    </div>
+    <div
+      v-if="featuredPosts.length > 0"
+      class="featured-posts space-y-12"
+    >
+      <PostFeature
+        v-for="post in featuredPosts"
+        :key="`featured-${post.postId}`"
+        :card
+        :post="post"
+      />
+    </div>
 
-          <div v-if="regularPosts.length > 0" class="grid" :class="gridClasses">
+    <div
+      class="post-content-area "
+    >
+      <div class="flex justify-between border-b border-theme-200 dark:border-theme-700 col-span-12">
+        <div>
+          <button
+            :class="getTabClasses('latest')"
+            @click="emit('update:sortBy', 'latest')"
+          >
+            Latest
+          </button>
+          <button
+            class="hidden"
+            :class="getTabClasses('popular')"
+            @click="emit('update:sortBy', 'popular')"
+          >
+            Popular
+          </button>
+        </div>
+        <div>
+          <button
+            :class="getTabClasses('archive')"
+            @click="emit('update:sortBy', 'popular')"
+          >
+            View All
+          </button>
+        </div>
+      </div>
+      <div class="grid grid-cols-12 gap-12" :class="layout === 'magazine' ? 'pt-12' : ''">
+        <div class="w-full @container/post-list grow col-span-12">
+          <div
+            v-if="regularPosts.length > 0"
+            class="grid"
+            :class="layout === 'magazine' ? 'grid grid-cols-1 @[500px]/post-list:grid-cols-2 @[1000px]/post-list:grid-cols-3 gap-12' : 'divide-y divide-theme-700/50'"
+          >
             <PostItem
               v-for="post in regularPosts"
               :key="`post-${post.postId}`"
               :post="post"
-              :config="{ imagePosition: config.imagePosition }"
               :class="[
-                config.layout === 'blog' ? 'py-8' : '',
+                layout === 'blog' ? 'py-8 lg:py-12' : '',
               ]"
             />
           </div>
@@ -121,12 +168,7 @@ const gridClasses = vue.computed(() => {
             </p>
           </div>
         </div>
-
-        <!-- Sidebar - Using slots for widgets -->
-        <aside v-if="config.sidebar !== 'none'" class="w-full lg:w-[38.2%] pt-8 lg:pt-0">
-          <slot name="sidebar" />
-        </aside>
       </div>
-    </template>
+    </div>
   </div>
 </template>

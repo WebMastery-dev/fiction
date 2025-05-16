@@ -2,8 +2,9 @@
 import type { AdminEditorController, EditorTool } from '@fiction/admin'
 import type { Site } from '../../site'
 import type { ToolKeys } from './tools.js'
+import ElTool from '@fiction/admin/tools/ElTool.vue'
 import { vue } from '@fiction/core'
-import TabbedOptions from '@fiction/ui/inputs/TabbedOptions.vue'
+import FormEngine from '@fiction/ui/inputs/FormEngine.vue'
 import { getPageOptions } from './utils'
 
 const props = defineProps<{
@@ -24,17 +25,25 @@ const pageConfig = vue.computed({
 const tempValue = vue.ref<Record<string, any>>({})
 
 const options = vue.computed(() => {
-  return getPageOptions({ site, page: pageConfig.value, temp: tempValue.value, includeHomeOption: true })
+  return getPageOptions({ site, page: pageConfig.value, temp: tempValue.value, editMode: 'edit' })
 })
 </script>
 
 <template>
-  <TabbedOptions
-    v-model="pageConfig"
-    title="Current Page Settings"
-    :options="[options.basic, options.seo]"
-    :input-props="{ site, tool }"
-    @update:temp-value="tempValue = $event"
-    @done="site.editorActivateTool({ toolId: '' })"
-  />
+  <ElTool
+    :tool
+    :title="tool.title"
+    :icon="tool.icon"
+  >
+    <FormEngine
+      class="my-4"
+      state-key="optionsEngine"
+      :model-value="pageConfig"
+      ui-size="md"
+      :options="[options.basic, options.seo]"
+      :disable-group-hide="true"
+      :input-props="{ site, tool }"
+      @update:model-value="pageConfig = $event"
+    />
+  </ElTool>
 </template>

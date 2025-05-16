@@ -1,19 +1,14 @@
-import type { template as TransactionTemplate } from '@fiction/cards/standard/transaction/index.js'
-import type { FictionServer } from '@fiction/core'
-import type { FictionApp } from '@fiction/core/plugin-app'
-import type { FictionEmail } from '@fiction/core/plugin-email'
-import type { FictionMedia } from '@fiction/core/plugin-media'
-import type { FictionRouter } from '@fiction/core/plugin-router'
-import type { FictionUser } from '@fiction/core/plugin-user'
+import type { FictionApp, FictionEmail, FictionMedia, FictionRouter, FictionServer, FictionUser } from '@fiction/core'
 import type { FictionPluginSettings } from '@fiction/core/plugin.js'
 import type { FictionStripe } from '@fiction/plugin-stripe/index.js'
 import type { FictionTransactions } from '@fiction/plugin-transactions'
+import type { FictionAi } from '@fiction/plugins/plugin-ai/index.js'
 import type { CardFactory } from '@fiction/site/cardFactory.js'
 import type { Card, CardTemplate, TableCardConfig } from '@fiction/site/index.js'
 import type { dashTemplate } from './dashboard/templates.js'
 import type { Widget } from './dashboard/widget.js'
 import type { WidgetLocation } from './types.js'
-import { envConfig } from '@fiction/core'
+import { EnvVar, vars } from '@fiction/core'
 import { FictionPlugin } from '@fiction/core/plugin.js'
 import { safeDirname, vue } from '@fiction/core/utils'
 import { cardTemplate } from '@fiction/site/index.js'
@@ -25,7 +20,11 @@ export * from './tools/tools.js'
 export * from './types.js'
 export * from './utils/index.js'
 
-envConfig.register({ name: 'ADMIN_UI_ROOT', onLoad: ({ fictionEnv }) => { fictionEnv.addUiRoot(safeDirname(import.meta.url)) } })
+// envConfig.register({ name: 'ADMIN_UI_ROOT', onLoad: ({ fictionEnv }) => { fictionEnv.addUiRoot(safeDirname(import.meta.url)) } })
+
+vars.register(() => [
+  new EnvVar({ name: 'PROXYCURL_API_KEY' }),
+])
 
 export type FictionAdminSettings = {
   fictionEmail: FictionEmail
@@ -35,6 +34,8 @@ export type FictionAdminSettings = {
   fictionApp: FictionApp
   fictionRouter: FictionRouter
   fictionServer: FictionServer
+  fictionAi: FictionAi
+  proxycurlApiKey?: string
 } & FictionPluginSettings
 
 type PageLoader = (args: { factory: CardFactory }) => (Promise<TableCardConfig[]> | TableCardConfig[])
@@ -45,6 +46,7 @@ export type WidgetFactoryEntry = { key: string, priority?: number }
 
 export class FictionAdmin extends FictionPlugin<FictionAdminSettings> {
   widgetRequests?: ReturnType<typeof createWidgetEndpoints>
+
   constructor(settings: FictionAdminSettings) {
     super('FictionAdmin', { root: safeDirname(import.meta.url), ...settings })
 
@@ -60,13 +62,30 @@ export class FictionAdmin extends FictionPlugin<FictionAdminSettings> {
     }
   }
 
+  async redirectIfLoggedOut() {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    const { fictionUser } = this.settings
+
+    const u = await fictionUser.userInitialized({ caller: 'FictionAdmin' })
+
+    if (!u) {
+      window.location.href = `${this.urls().auth}?redirect=${encodeURIComponent(window.location.href)}`
+      return false
+    }
+    else {
+      return true
+    }
+  }
+
   admin() {
     const widgets = getWidgets(this.settings)
 
     this.widgetRegister.value.push(...Object.values(widgets))
 
     this.addToWidgetArea('homeMain', [
-      { key: 'overviewWidget', priority: 40 },
       { key: 'onboardWelcome', priority: 10 },
     ])
   }
@@ -93,14 +112,6 @@ export class FictionAdmin extends FictionPlugin<FictionAdminSettings> {
             await factory.fromTemplate({ templateId: 'tplSettingsPage' }),
           ],
         }),
-        await factory.fromTemplate<typeof TransactionTemplate>({
-          templateId: 'cardTransactionViewV1',
-          slug: 'onboard',
-          title: 'Onboard Survey',
-          cards: [
-            await factory.fromTemplate({ templateId: 'tplOnboardSurvey' }),
-          ],
-        }),
         await factory.fromTemplate<typeof dashTemplate>({
           templateId: 'dash',
           slug: 'welcome',
@@ -118,10 +129,7 @@ export class FictionAdmin extends FictionPlugin<FictionAdminSettings> {
             templateId: 'tplSettingsPage',
             el: vue.defineAsyncComponent(() => import('./settings/SettingsMain.vue')),
           }),
-          cardTemplate({
-            templateId: 'tplOnboardSurvey',
-            el: vue.defineAsyncComponent(() => import('./dashboard/OnboardSurvey.vue')),
-          }),
+
           cardTemplate({
             templateId: 'tplDashboardWelcome',
             el: vue.defineAsyncComponent(() => import('./dashboard/ViewDashboard.vue')),

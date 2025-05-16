@@ -7,7 +7,6 @@ import ElSavingSignal from '@fiction/admin/el/ElSavingSignal.vue'
 import ViewEditor from '@fiction/admin/ViewEditor.vue'
 import CardButton from '@fiction/cards/CardButton.vue'
 import { onResetUi, resetUi, useService, vue } from '@fiction/core'
-import XDropDown from '@fiction/ui/common/XDropDown.vue'
 import XText from '@fiction/ui/common/XText.vue'
 import ElSpinner from '@fiction/ui/loaders/ElSpinner.vue'
 import El404 from '@fiction/ui/page/El404.vue'
@@ -127,7 +126,7 @@ async function resetToPublished() {
     </div>
 
     <template v-else>
-      <ViewEditor :tool-props="{ site }" :controller="site?.editorController" :card>
+      <ViewEditor :tool-props="{ site, card }" :controller="site?.editorController" :card>
         <template #headerLeft>
           <div>
             <CardButton
@@ -148,7 +147,6 @@ async function resetToPublished() {
           <div class="flex gap-2 items-center">
             <ElSavingSignal
               :is-dirty="site?.saveUtil.isDirty.value"
-
               data-test-id="draft-control-dropdown"
               :classes="{ text: 'hidden md:inline' }"
               ui-size="sm"
@@ -164,7 +162,7 @@ async function resetToPublished() {
               data-test-id="viewSiteButton"
               :href="`${site.url.value}?_scope=draft`"
             >
-              Preview
+              View Site
             </CardButton>
           </div>
           <CardButton

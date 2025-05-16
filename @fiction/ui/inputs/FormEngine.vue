@@ -27,6 +27,7 @@ const {
   disableGroupHide = false,
   format = 'input',
   engineIndex,
+  initialGroupKey,
 } = defineProps<{
   stateKey?: string
   options: InputOption[]
@@ -36,7 +37,7 @@ const {
   modelValue?: Record<string, unknown>
   depth?: number
   basePath?: string
-  classes?: { inputWrap?: string, tabWrap?: string }
+  classes?: { inputWrap?: string, tabWrap?: string, groupPad?: string }
   inputProps?: Record<string, unknown>
   uiSize?: UiElementSize
   buttons?: ActionButton[]
@@ -44,6 +45,7 @@ const {
   format?: 'control' | 'input'
   aligned?: 'left' | 'right' | 'center'
   engineIndex?: number
+  initialGroupKey?: string
 }>()
 
 const emit = defineEmits<{
@@ -73,8 +75,18 @@ const standardOptions = vue.computed(() =>
 // Use tabs only when multiple groups exist at the same depth
 const useTabsForGroups = vue.computed(() => groupOptions.value.length)
 
-// Active tab tracking
-const activeTabIndex = vue.ref(groupOptions.value[0]?.isClosed.value ? -1 : 0)
+// Initialize activeTabIndex with the matching group index if provided
+function initialTabIndex() {
+  if (initialGroupKey && depth === 0) {
+    const index = groupOptions.value.findIndex(opt =>
+      opt.key.value === initialGroupKey || opt.key.value === `group.${initialGroupKey}`,
+    )
+    return index >= 0 ? index : (groupOptions.value[0]?.isClosed.value ? -1 : 0)
+  }
+  return groupOptions.value[0]?.isClosed.value ? -1 : 0
+}
+
+const activeTabIndex = vue.ref(initialTabIndex())
 const lastTabIndex = vue.ref(-1)
 
 // Create a function to recursively get all group options and their isClosed status
@@ -120,13 +132,13 @@ const cls = vue.computed(() => {
   const configs = {
     md: {
       groupHeader: 'py-1.5 px-2 text-xs',
-      groupPad: 'p-4 @[350px]:px-6 @[500px]:px-8 @[700px]:px-10',
+      groupPad: 'p-4 @[350px]:px-6 @[500px]:px-8 @[700px]:px-10 pt-6',
       inputGap: 'gap-5 @sm:gap-7 @xl:gap-10',
       tab: 'py-2 px-4 text-xs font-normal',
     },
     lg: {
       groupHeader: 'py-2.5 px-3 text-sm',
-      groupPad: 'px-8 lg:px-10 @xl:px-12 py-8 pb-10',
+      groupPad: 'px-8 lg:px-10 @xl:px-12 py-8 pb-10  pt-10',
       inputGap: 'gap-7',
       tab: 'py-3 px-4 text-sm font-normal',
     },
@@ -179,7 +191,7 @@ function getInputWrapClasses(opt: InputOption) {
 }
 
 function getGroupClasses(opt: InputOption) {
-  return opt.settings.format === 'control' ? '' : [cls.value.groupPad, '']
+  return classes?.groupPad || (opt.settings.format === 'control' ? '' : cls.value.groupPad)
 }
 
 function getOptionPath(args: { opt: InputOption, index?: number, mode?: 'base' | 'edit' }): string {
@@ -269,7 +281,7 @@ function handleTabChange(index: number) {
     <div v-if="groupOptions.length > 0">
       <!-- Tabs for groups when enabled -->
       <div v-if="useTabsForGroups" class="overflow-x-auto no-scrollbar border-b border-theme-200 dark:border-theme-600/60 sticky top-0 z-10 pt-2 bg-theme-0 dark:bg-theme-900">
-        <div class="flex px-1">
+        <div class="flex px-1.5">
           <button
             v-for="(opt, i) in groupOptions"
             :key="i"
@@ -335,7 +347,7 @@ function handleTabChange(index: number) {
             </TransitionSlide>
 
             <!-- Group content without transition (for tabbed version) -->
-            <div v-if="useTabsForGroups && i === activeTabIndex" :class="getGroupClasses(opt)" class="pt-6">
+            <div v-if="useTabsForGroups && i === activeTabIndex" :class="getGroupClasses(opt)">
               <FormEngine
                 :state-key="stateKey"
                 :ui-size="uiSize"

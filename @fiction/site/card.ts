@@ -29,7 +29,7 @@ export const OldCardTagsSchema = z.enum([
   'portfolio',
   'hero',
   'resume',
-  'advanced'
+  'advanced',
 ])
 
 type CardTags = z.infer<typeof OldCardTagsSchema>

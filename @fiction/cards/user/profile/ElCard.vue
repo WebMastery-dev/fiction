@@ -6,7 +6,6 @@ import { useElementVisible } from '@fiction/ui/anim'
 import AnimClipPath from '@fiction/ui/anim/AnimClipPath.vue'
 import EffectCarousel from '@fiction/ui/effect/EffectCarousel.vue'
 import EffectGlare from '@fiction/ui/effect/EffectGlare.vue'
-import XIcon from '@fiction/ui/media/XIcon.vue'
 import XMedia from '@fiction/ui/media/XMedia.vue'
 import XEntry from '@fiction/ui/prose/XEntry.vue'
 import CardText from '../../CardText.vue'
@@ -20,7 +19,7 @@ const { card } = defineProps<{
 }>()
 
 const uc = vue.computed(() => {
-  return card.userConfig.value || {}
+  return card.fullConfig.value || {}
 })
 
 const mediaItems = vue.computed(() => {
@@ -45,8 +44,8 @@ const hoverClasses = 'group-hover/item:text-primary-600 dark:group-hover/item:te
 
 <template>
   <CardWrap :card class="minimal-profile">
-    <div class="lg:flex gap-10 md:gap-12 xl:gap-24" :class="uc.layout === 'right' ? 'md:flex-row-reverse' : ''">
-      <div class="w-full max-w-sm xl:max-w-full xl:w-[50%] mb-8 ">
+    <div class="flex flex-col md:flex-row gap-10 md:gap-12 xl:gap-24" :class="uc.layout === 'right' ? 'md:flex-row-reverse' : ''">
+      <div class="w-full md:w-[30%] lg:w-[50%] shrink-0">
         <div class="relative">
           <EffectGlare class="rounded-[20px]">
             <AnimClipPath
@@ -79,13 +78,12 @@ const hoverClasses = 'group-hover/item:text-primary-600 dark:group-hover/item:te
           />
         </div>
       </div>
-      <div class="lg:w-[60%] xl:w-[50%] mt-6 md:mt-0 flex items-center">
-        <div class="flex flex-col justify-center gap-3 2xl:gap-8 max-w-full" :class="isVisible ? 'translate-y-0' : 'translate-y-[100px]'">
-          <div class="details">
+      <div class="md:w-[70%] lg:w-[50%] mt-6 md:mt-0 flex items-center">
+        <div class="flex flex-col h-full justify-center gap-4 md:gap-12 max-w-full" :class="isVisible ? 'translate-y-0' : 'translate-y-[100px]'">
+          <div class="details grow flex flex-col gap-4 justify-center">
             <SuperTitle
               v-if="uc.superTitle"
               :card
-              class="mb-6"
               base-path="superTitle"
               :super-title="uc.superTitle"
               size="lg"
@@ -95,14 +93,14 @@ const hoverClasses = 'group-hover/item:text-primary-600 dark:group-hover/item:te
               tag="h1"
               path="title"
               animate="rise"
-              class="heading font-semibold text-3xl lg:text-4xl x-font-title lg:leading-[1.3] lg:text-pretty"
+              class="heading font-semibold text-4xl x-font-title lg:leading-[1.3] lg:text-pretty"
             />
 
             <XEntry class="">
               <CardText
                 tag="div"
                 :card
-                class="sub-heading mt-6"
+                class="sub-heading text-theme-300"
                 path="content"
                 animate="rise"
               />

@@ -533,6 +533,13 @@ export class ManageSite extends SitesQuery {
 
     const db = this.settings.fictionDb.client()
 
+    if (fields.isPrimary) {
+      await db(t.sites)
+        .where({ orgId })
+        .whereNot(selector)
+        .update({ isPrimary: false })
+    }
+
     let updatedSite: TableSiteConfig | undefined
 
     await db.transaction(async (trx) => {
@@ -777,7 +784,7 @@ export class ManageSite extends SitesQuery {
       // Get organization details using ManageOrganization query
       const orgResponse = await this.settings.fictionUser?.queries.ManageOrganization.serve(
         {
-          _action: 'retrieve',
+          _action: 'read',
           where: { orgId: site.orgId },
         },
         { server: true },
@@ -858,7 +865,7 @@ export class ManageSite extends SitesQuery {
     const db = this.settings.fictionDb.client()
 
     // If siteId is already provided, return immediately
-    if (!where.hostname && !where.orgId) {
+    if (!where.hostname && !where.orgId && !where.subDomain) {
       return where
     }
 
@@ -898,6 +905,19 @@ export class ManageSite extends SitesQuery {
 
       // Use the orgId to find the site
       where = { orgId: domain.orgId }
+    }
+    else if (where.subDomain) {
+      const org = await db
+        .select('org_id')
+        .from(t.org)
+        .where({ handle: where.subDomain })
+        .first()
+
+      if (!org?.orgId) {
+        this.log.error('Error Loading Site', { data: { where, org } })
+        throw new Error(`Site not found (where:${JSON.stringify(where)})`)
+      }
+      where = { orgId: org.orgId }
     }
 
     // Handle orgId case (which now includes hostname lookups)
@@ -1028,6 +1048,7 @@ export class ManageSites extends SitesQuery {
         .where(`${t.sites}.org_id`, orgId)
         .limit(limit)
         .offset(offset)
+        .orderBy('is_primary', 'desc') // Order by primary status first
         .orderBy('updatedAt', 'desc')
         .groupBy(`${t.sites}.site_id`)
 

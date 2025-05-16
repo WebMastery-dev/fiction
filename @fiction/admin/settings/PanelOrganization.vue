@@ -27,6 +27,10 @@ const avatarUrl = vue.computed(() => {
 
 const isDirty = vue.ref(false)
 
+const initialGroupKey = vue.computed(() => {
+  return card.site?.siteRouter.query.value?.tab as string | undefined
+})
+
 async function save() {
   sending.value = 'saving'
   const endpoint = service.fictionUser.requests.ManageOrganization
@@ -39,6 +43,7 @@ async function save() {
   await endpoint.projectRequest({ _action: 'update', fields, where: { orgId } })
 
   isDirty.value = false
+  sending.value = ''
 }
 
 function update(orgNew: Organization) {
@@ -47,62 +52,191 @@ function update(orgNew: Organization) {
   isDirty.value = true
 }
 
-const o = [
-  createOption({
-    schema,
-    key: 'group.brand',
-    label: 'Important Details',
-    input: 'group',
-    options: [
-      createOption({ schema, key: 'orgName', label: 'Name', input: 'InputText', placeholder: 'Enter a name', isRequired: true }),
-      createOption({ schema, key: 'headline', label: 'Tagline', input: 'InputUrl', isRequired: true, placeholder: 'Enter a tagline' }),
-      createOption({ schema, key: 'about', label: 'About', input: 'InputTextarea', isRequired: true, placeholder: 'Enter a description' }),
-      createOption({ schema, key: 'avatar', label: 'Avatar', input: 'InputMedia' }),
-      createOption({ key: 'handle', label: 'Handle', input: 'InputHandle', placeholder: 'my-handle', props: { table: 'fiction_org', columns: [{ name: 'handle' }] } }),
-      createOption({ schema, key: 'orgEmail', label: 'Billing and Contact Email', input: 'InputEmail', isRequired: true }),
-    ],
-  }),
-  createOption({
-    schema,
-    key: 'group.additional',
-    label: 'Additional Settings',
-    input: 'group',
-    options: [
-      createOption({ schema, key: 'companyName', label: 'Company Name', input: 'InputText', placeholder: 'Acme, Inc.', props: { autocomplete: 'organization' } }),
-      createOption({ schema, key: 'streetAddress', label: 'Street Address', input: 'InputText', placeholder: '123 Main St, City, State, Zip', props: { autocomplete: 'street-address' } }),
+const orgHostname = vue.computed(() => {
+  const handle = org.value?.handle
+  if (!handle)
+    return ''
 
-    ],
-  }),
-  createOption({
-    schema,
-    key: 'group.dev',
-    label: 'Developer',
-    input: 'group',
-    options: [
-      createOption({
-        key: 'apiSecret',
-        label: 'Secret API Key',
-        description: 'Keep this key secure. Do not share or expose it in client-side code.',
-        input: InputApiKey,
-        props: { card },
-      }),
-    ],
-  }),
-  createOption({
-    key: 'adminOnly',
-    label: 'Admin Only Options',
-    input: 'group',
-    isHidden: !service.fictionUser.activeUser.value?.isSuperAdmin,
-    options: [
-      createOption({ schema, key: 'specialPlan', label: 'Assign a Special Pricing Plan', input: 'InputSelect', list: ['standard', 'vip', 'non-profit'] }),
-      createOption({
-        key: 'control.delete',
-        testId: 'deleteOrg',
-        label: 'Delete Brand Workspace',
-        input: 'InputActionList',
-        icon: { class: 'i-tabler-trash' },
-        props: {
-          buttons: () => [
+  return `https://${handle}.fiction.com`
+})
+
+const opts = vue.computed(() => {
+  return [
+    createOption({
+      schema,
+      label: 'Essentials',
+      key: 'group.essentials',
+      input: 'group',
+      icon: { class: 'i-tabler-north-star' },
+      options: [
+        createOption({
+          schema,
+          key: 'orgName',
+          label: 'Name',
+          input: 'InputText',
+          placeholder: 'Enter a name',
+          isRequired: true,
+          description: 'A concise name defining your identity, displayed prominently on your profile.',
+        }),
+        createOption({
+          schema,
+          key: 'orgEmail',
+          label: 'Email',
+          input: 'InputEmail',
+          isRequired: true,
+          description: 'A primary contact email for communication and account verification.',
+        }),
+        createOption({
+          key: 'handle',
+          label: 'Handle',
+          input: 'InputHandle',
+          placeholder: 'my-handle',
+          props: { table: 'fiction_org', columns: [{ name: 'handle' }] },
+          description: 'A unique identifier for your profile, used in URLs and mentions.',
+        }),
+        createOption({
+          schema,
+          key: 'headline',
+          label: 'Headline',
+          input: 'InputUrl',
+          isRequired: true,
+          placeholder: 'Enter a headline',
+          description: 'A sharp, 220-character tagline capturing your essence, shown in search results and on your profile.',
+        }),
+        createOption({
+          schema,
+          key: 'about',
+          label: 'About',
+          input: 'InputTextarea',
+          isRequired: true,
+          placeholder: 'Enter a description',
+          description: 'A compelling 2,600-character narrative detailing your mission, values, and story.',
+        }),
+        createOption({
+          schema,
+          key: 'avatar',
+          label: 'Avatar',
+          input: 'InputMedia',
+          description: 'A signature image embodying your identity, prominently featured on your profile and in searches.',
+        }),
+        createOption({
+          schema,
+          key: 'logo',
+          label: 'Logo',
+          subLabel: 'For visual identity',
+          input: 'InputMedia',
+          description: 'An emblem reinforcing your visual identity across the platform.',
+        }),
+        createOption({
+          schema,
+          key: 'primaryColor',
+          label: 'Primary Color',
+          input: 'InputColorTheme',
+          placeholder: 'Default',
+          description: 'A defining color shaping your visual theme and consistency.',
+          props: {
+            mode: 'bright',
+          },
+        }),
+      ],
+    }),
+
+    createOption({
+      schema,
+      key: 'group.domain',
+      label: 'Domain',
+      input: 'group',
+      icon: { class: 'i-tabler-world-upload' },
+      options: [
+        createOption({
+          schema,
+          key: 'handle',
+          label: 'Fiction Domain',
+          input: 'InputHandle',
+          isRequired: true,
+          props: {
+            beforeInput: 'https://',
+            afterInput: '.fiction.com',
+            table: 'fiction_org',
+            columns: [{ name: 'handle' }],
+            uiSize: 'md',
+          },
+        }),
+        createOption({
+          key: 'customDomains',
+          label: 'Enter Custom Domain',
+          subLabel: 'Add custom domains for this site (e.g. www.example.com)',
+          input: vue.defineAsyncComponent(() => import('./CustomDomain.vue')),
+          isRequired: true,
+        }),
+        createOption({
+          key: 'domainSetupInstructions',
+          label: 'Setup Instructions',
+          input: vue.defineAsyncComponent(() => import('./CustomDomainInstructions.vue')),
+          props: {
+            destination: orgHostname.value,
+          },
+        }),
+
+      ],
+    }),
+    createOption({
+      key: 'group.social',
+      label: 'Social',
+      input: 'group',
+      icon: { class: 'i-tabler-social' },
+      options: [
+        createOption({ schema, key: 'accounts.x', label: 'X / Twitter URL', input: 'InputUrl', placeholder: 'https://www.x.com/username' }),
+        createOption({ schema, key: 'accounts.instagram', label: 'Instagram URL', input: 'InputUrl', placeholder: 'https://www.instagram.com/username' }),
+        createOption({ schema, key: 'accounts.linkedin', label: 'LinkedIn URL', input: 'InputUrl', placeholder: 'https://www.linkedin.com/in/username' }),
+        createOption({ schema, key: 'accounts.facebook', label: 'Facebook URL', input: 'InputUrl', placeholder: 'https://www.facebook.com/username' }),
+        createOption({ schema, key: 'accounts.github', label: 'GitHub URL', input: 'InputUrl', placeholder: 'https://www.github.com/username' }),
+        createOption({ schema, key: 'accounts.youtube', label: 'YouTube URL', input: 'InputUrl', placeholder: 'https://www.youtube.com/channel/username' }),
+        createOption({ schema, key: 'accounts.pinterest', label: 'Pinterest URL', input: 'InputUrl', placeholder: 'https://www.pinterest.com/username' }),
+        createOption({ schema, key: 'accounts.tiktok', label: 'TikTok URL', input: 'InputUrl', placeholder: 'https://www.tiktok.com/@username' }),
+      ],
+    }),
+    createOption({
+      schema,
+      key: 'group.additional',
+      label: 'Advanced',
+      input: 'group',
+      icon: { class: 'i-tabler-bolt' },
+      options: [
+
+        createOption({
+          schema,
+          key: 'googleAnalyticsId',
+          label: 'Google Analytics ID',
+          description: 'Your Measurement ID (G-XXXXXXXXXX) to enable website analytics tracking.',
+          input: 'InputText',
+          placeholder: 'G-XXXXXXXXXX',
+        }),
+        createOption({
+          key: 'apiSecret',
+          label: 'Secret API Key',
+          description: 'A secure key for API access; keep confidential and avoid client-side exposure.',
+          input: InputApiKey,
+          props: { card },
+        }),
+      ],
+    }),
+
+    createOption({
+      key: 'adminOnly',
+      label: 'Admin Only Options',
+      input: 'group',
+      isHidden: !service.fictionUser.activeUser.value?.isSuperAdmin,
+      options: [
+        createOption({ schema, key: 'specialPlan', label: 'Assign a Special Pricing Plan', input: 'InputSelect', list: ['standard', 'vip', 'non-profit'] }),
+        createOption({
+          key: 'control.delete',
+          testId: 'deleteOrg',
+          label: 'Delete Brand Workspace',
+          input: 'InputActionList',
+          icon: { class: 'i-tabler-trash' },
+          props: {
+            buttons: () => [
             {
               testId: 'deleteOrgButton',
               label: 'Delete Brand Workspace...',
@@ -125,13 +259,14 @@ const o = [
                 }
               },
             } satisfies ActionButton,
-          ],
-        },
-      }),
-    ],
-    icon: { class: 'i-tabler-shield-lock' },
-  }),
-]
+            ],
+          },
+        }),
+      ],
+      icon: { class: 'i-tabler-shield-lock' },
+    }),
+  ]
+})
 
 const header = vue.computed(() => {
   return {
@@ -168,9 +303,10 @@ vue.onMounted(async () => {
       :model-value="org"
       state-key="settingsTool"
       ui-size="lg"
-      :options="o"
+      :options="opts"
       :card
       :disable-group-hide="true"
+      :initial-group-key="initialGroupKey"
       @update:model-value="update($event)"
     />
   </SettingsPanel>

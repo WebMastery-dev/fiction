@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { Post } from '@fiction/posts'
+import type { Card } from '@fiction/site'
 import { vue } from '@fiction/core'
 import XLink from '@fiction/ui/common/XLink.vue'
 import XMedia from '@fiction/ui/media/XMedia.vue'
@@ -8,67 +9,36 @@ import PostItemMeta from './PostItemMeta.vue'
 
 defineOptions({ name: 'PostFeature' })
 
-const { post, layout = 'left', aspectRatio = 'landscape' } = defineProps<{
+const { post, card } = defineProps<{
   post: Post
-  layout?: 'left' | 'right' | 'above'
-  aspectRatio?: 'square' | 'landscape' | 'portrait' | 'ultrawide'
+  card?: Card
 }>()
-
-// Container layout based on golden ratio principles
-const containerClasses = vue.computed(() => {
-  const baseClasses = 'flex flex-col gap-6'
-
-  switch (layout) {
-    case 'left':
-      return `${baseClasses} md:flex-row md:gap-12`
-    case 'right':
-      return `${baseClasses} md:flex-row-reverse md:gap-12`
-    case 'above':
-      return `${baseClasses} gap-5`
-    default:
-      return `${baseClasses} md:flex-row md:gap-8`
-  }
-})
 
 // Image aspect ratio using golden ratio proportions
 const imageClasses = vue.computed(() => {
-  const base = 'w-full h-full object-cover rounded-md overflow-hidden'
+  return 'w-full h-full object-cover rounded-md overflow-hidden aspect-[1.618/1]'
+})
 
-  const aspectClasses = {
-    square: 'aspect-square',
-    landscape: 'aspect-[1.618/1]', // Golden ratio
-    portrait: 'aspect-[0.618/1]', // Inverse golden ratio
-    ultrawide: 'aspect-[1.618/0.618]', // Golden ratio squared
+const contextTitle = vue.computed(() => {
+  const out = [post.isFeatured.value ? 'Featured' : 'Latest']
+
+  const cat = post.categories.value?.[0]
+
+  if (cat) {
+    out.push(cat)
   }
 
-  return `${base} ${aspectClasses[aspectRatio]}`
-})
-
-// Content proportions based on golden ratio
-const contentClass = vue.computed(() => {
-  if (layout === 'above')
-    return 'w-full'
-
-  return 'w-full md:w-[38.2%]' // Golden ratio proportion
-})
-
-// Image container proportions based on golden ratio
-const imageContainerClass = vue.computed(() => {
-  if (layout === 'above')
-    return 'w-full'
-
-  return 'w-full md:w-[61.8%]' // Inverse golden ratio proportion
+  return out
 })
 </script>
 
 <template>
-  <article class="post-feature relative">
-    <div
-      :class="containerClasses"
-    >
+  <article class="post-feature relative @container/feature">
+    <div class="grid grid-cols-12 lg:gap-12 md:gap-8 gap-6">
       <!-- Image container with golden ratio proportions -->
-      <div :class="imageContainerClass">
+      <div class="col-span-6">
         <XLink
+          :card
           :href="post.href.value"
           class="block h-full overflow-hidden rounded-lg transition-transform duration-300 hover:brightness-105"
         >
@@ -88,41 +58,40 @@ const imageContainerClass = vue.computed(() => {
       </div>
 
       <!-- Content container with golden ratio spacing -->
-      <div class="flex flex-col justify-center" :class="[contentClass]">
-        <!-- Category/tag if available -->
-        <div
-          v-if="post.categories?.value?.length"
-          class="text-xs font-medium text-primary-600 dark:text-primary-400 mb-2"
-        >
-          {{ post.categories.value[0] }}
+      <div class="col-span-6 flex flex-col gap-8 justify-center text-base @[600px]/post-feature:text-[1.1em] @[700px]/post-feature:text-[1.2em]">
+        <div class="flex flex-col gap-[.7em]">
+          <!-- Category/tag if available -->
+          <div
+            v-if="contextTitle"
+            class="text-md text-theme-600 dark:text-theme-500 flex gap-2"
+          >
+            <template v-for="(item, index) in contextTitle" :key="index">
+              <span>{{ item }}</span>
+              <span v-if="index < contextTitle.length - 1">·</span>
+            </template>
+          </div>
+          <h2 class="!leading-[1.2] x-font-title font-semibold text-[2.2em] line-clamp-4 sm:text-pretty">
+            <XLink
+              :card
+              :href="post.href.value"
+              class="hover:text-theme-600 dark:hover:text-theme-200 transition-colors"
+            >
+              {{ post.title.value }}
+            </XLink>
+          </h2>
+
+          <!-- Excerpt with proper spacing -->
+          <p
+            v-if="(post.subTitle?.value)"
+            class="text-theme-700 dark:text-theme-300 line-clamp-2 md:line-clamp-3 text-[1.25em]"
+          >
+            {{ post.subTitle?.value }}
+          </p>
         </div>
 
-        <!-- Title with proper rhythm -->
-        <h2 class="x-font-title font-semibold text-theme-950 dark:text-theme-50 text-xl sm:text-2xl md:text-3xl mb-3 line-clamp-2">
-          <XLink
-            :href="post.href.value"
-            class="hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-          >
-            {{ post.title.value }}
-          </XLink>
-        </h2>
-
-        <!-- Excerpt with proper spacing -->
-        <p
-          v-if="(post.subTitle?.value || post.excerpt?.value)"
-          class="text-theme-700 dark:text-theme-300 mb-4 line-clamp-2 md:line-clamp-3"
-        >
-          {{ post.subTitle?.value || post.excerpt?.value }}
-        </p>
-
-        <!-- Meta information with refined styling -->
-        <PostItemMeta
-          :post="post"
-          :classes="{
-            color: 'text-theme-500 dark:text-theme-400',
-            textSize: 'text-sm',
-          }"
-        />
+        <div class="flex gap-6 items-center">
+          <PostItemMeta :post class="text-theme-500 text-[.9em]" />
+        </div>
       </div>
     </div>
   </article>

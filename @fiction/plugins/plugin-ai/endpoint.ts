@@ -1,414 +1,429 @@
-import type { EndpointMeta, EndpointResponse, TableMediaConfig } from '@fiction/core'
-import type { PineconeRecord, RecordMetadata } from '@pinecone-database/pinecone'
+import type { EndpointMeta, EndpointResponse, MediaObject } from '@fiction/core'
+import type { z } from 'zod'
 import type { FictionAi, FictionAiSettings } from '.'
-import type { SourceItem } from './tables'
-import { abort, objectId, Query } from '@fiction/core'
+import { abort, getColorScheme, Query, Shortcodes } from '@fiction/core'
+import { createStockMediaHandler } from '@fiction/ui/stock'
 
-import { Pinecone } from '@pinecone-database/pinecone'
-import { generateText } from 'ai'
-import { Document, TextSplitter } from './splitter'
-import { contentCommandUtil } from './systemMessage'
-
+// Types
 type QueryAiSettings = { fictionAi: FictionAi } & FictionAiSettings
 
-export type CommandMessage = { role: 'system' | 'assistant' | 'user', content: string }
+export type CommandMessage = {
+  role: 'system' | 'assistant' | 'user'
+  content: string
+}
 
-interface AiResult {
-  referenceInfo?: string
+export type ContentFormat =
+  | 'websiteCopy'
+  | 'contentAutocomplete'
+  | 'brandVoice'
+  | 'accountSetup' // Added new format
+
+// Request types
+export type AiRequest =
+  | {
+    _action: 'completion'
+    format?: ContentFormat
+    prompt: string
+    objectives?: Record<string, string>
+    schema?: z.ZodType<any>
+    schemaJson?: Record<string, unknown>
+    referenceInfo?: string
+    orgId?: string
+    userId?: string
+  }
+
+// Response types
+interface AiCompletionResult {
   completion?: Record<string, unknown>
   messages?: CommandMessage[]
 }
 
-export type ContentFormat =
-  | { format: 'websiteCopy', outputFormat: Record<string, unknown> }
-  | { format: 'contentAutocomplete' }
-
-export type AiCompletionSettings = {
-  _action: 'similaritySearch' | 'completion'
-  runPrompt: string
-  searchNamespace?: string
-  useSimilaritySearch?: boolean
-  referenceInfo?: string
-  orgId: string
-  userId: string
-  objectives: Record<string, string>
-} & ContentFormat
-
-export abstract class QueryAi extends Query<QueryAiSettings> {
-  constructor(settings: QueryAiSettings) {
-    super(settings)
+// Main Query Class
+export class QueryAi extends Query<QueryAiSettings> {
+  async run(params: AiRequest, meta: EndpointMeta): Promise<EndpointResponse<AiCompletionResult>> {
+    try {
+      switch (params._action) {
+        case 'completion':
+          return await this.handleCompletion(params, meta)
+        default:
+          throw abort('Invalid action')
+      }
+    }
+    catch (error) {
+      this.log.error(`Error in ${params._action}`, { error })
+      return {
+        status: 'error',
+        message: (error as Error).message,
+      }
+    }
   }
 
-  async getPineconeIndex(namespace: string) {
-    if (!this.settings.pineconeApiKey)
-      throw abort('pineconeApiKey required')
+  private async getOpenAiApi() {
+    const { default: OpenAI } = await import('openai')
+    return new OpenAI({
+      apiKey: this.settings.openaiApiKey,
+      dangerouslyAllowBrowser: true,
+    })
+  }
 
-    if (!this.settings.pineconeIndex)
-      throw abort('pineconeIndex required')
+  getOrg(args: { orgId?: string }) {
+    const { orgId } = args
+    if (!orgId)
+      throw abort('Missing orgId')
+    if (!this.settings.fictionUser)
+      throw abort('Missing fictionUser')
 
-    const pc = new Pinecone({
-      apiKey: this.settings.pineconeApiKey,
+    return this.settings.fictionUser?.queries.ManageOrganization.serve({ _action: 'read', where: { orgId } }, { server: true }).then(r => r.data)
+  }
+
+  private async handleCompletion(
+    params: Extract<AiRequest, { _action: 'completion' }>,
+    _meta: EndpointMeta,
+  ): Promise<EndpointResponse<AiCompletionResult>> {
+    const { format, prompt, objectives, schema, schemaJson, referenceInfo, orgId, userId } = params
+
+    if (!orgId || !userId)
+      throw abort('Missing orgId or userId')
+
+    // Get model and system messages
+    const { model } = await this.setupModel()
+    const messages = await this.buildSystemMessages({ format, objectives, schema, schemaJson, referenceInfo })
+
+    this.log.debug('Sending completion request', {
+      data: {
+        format,
+        hasSchema: !!schema,
+        prompt: prompt.substring(0, 100) + (prompt.length > 100 ? '...' : ''),
+      },
     })
 
-    return pc.index(this.settings.pineconeIndex).namespace(namespace)
+    try {
+      const { generateText } = await import('ai')
+
+      this.log.info('Generating completion', {
+        data: { prompt: prompt.slice(0, 300), format },
+      })
+      // Generate completion
+      const { text } = await generateText({
+        model,
+        system: messages.map(m => `${m.role}: ${m.content}`).join('\n'),
+        prompt,
+        temperature: 1,
+        seed: Math.floor(Math.random() * 1000),
+      })
+
+      // Parse completion as JSON
+      const rawCompletionObject = this.parseJsonFromCompletion(text)
+
+      const completion = await this.parseShortcodes({ completion: rawCompletionObject, orgId, userId })
+
+      this.log.info('Completion successful', {
+        data: { format, hasResult: !!completion },
+      })
+
+      return {
+        status: 'success',
+        data: {
+          completion,
+          messages,
+        },
+      }
+    }
+    catch (error) {
+      this.log.error('Completion failed', { error })
+      return {
+        status: 'error',
+        message: (error as Error).message,
+        data: { messages },
+      }
+    }
   }
 
-  async getAiModels() {
-    const { createOpenAI } = await import('@ai-sdk/openai')
-    const { createAnthropic } = await import('@ai-sdk/anthropic')
-    const { createXai } = await import('@ai-sdk/xai')
+  private async parseShortcodes(args: { completion: Record<string, unknown>, orgId?: string, userId?: string }): Promise<Record<string, unknown>> {
+    const { completion, orgId, userId } = args
+    const stock = await createStockMediaHandler()
+    const org = await this.getOrg({ orgId })
 
+    const primaryColor = org?.primaryColor ? getColorScheme(org?.primaryColor, { outputFormat: 'hex' }) : undefined
+
+    const sc = new Shortcodes<{
+      image_url: { orientation?: 'portrait' | 'landscape' | 'squarish', subject?: string }
+    }>({
+      fictionEnv: this.settings.fictionEnv,
+      shortcodes: [
+        { shortcode: 'image_url', handler: async (args) => {
+          const { attributes } = args
+
+          const orientation = attributes?.orientation || 'squarish'
+          const s = attributes?.subject || 'person'
+
+          const prompt = [
+            `Prompt: ${s}`,
+            `Constraints: make SURE the image has no text, logos, or watermarks on it.`,
+            `Style: ${org?.promptImage || 'Golden ratio, extremely minimalist, high contrast, sharp focus, Clean.'}`,
+            `${primaryColor ? `Color: Brand primary color is ${org?.primaryColor} (${primaryColor[600]}). Optionally use this color and its compliments. Not required.` : ''}`,
+
+          ].filter(Boolean).join('\n')
+
+          const mediaItem = await this.generateImage({ prompt, orientation, orgId, userId })
+
+          return mediaItem.url || stock.getRandomByAspectRatio(orientation, { tags: ['object', 'image'] }).url
+        } },
+
+      ],
+    })
+    return await sc.parseObject(completion)
+  }
+
+  // Helper methods
+  private async setupModel() {
+    const { generateText } = await import('ai')
+    const { createAnthropic } = await import('@ai-sdk/anthropic')
+
+    // Initialize Anthropic model
     const anthropic = createAnthropic({
       apiKey: this.settings.anthropicApiKey,
     })
 
-    const openai = createOpenAI({
-      apiKey: this.settings.openaiApiKey,
-    })
-
-    const xai = createXai({
-      apiKey: this.settings.xaiApiKey,
-    })
-
-    return { openai, anthropic, xai }
-  }
-
-  async getOpenAiApi() {
-    const { default: OpenAI } = await import('openai')
-    // we don't actually run in browser, but is needed as it just checks for window
-    return new OpenAI({ apiKey: this.settings.openaiApiKey, dangerouslyAllowBrowser: true })
-  }
-
-  flatten(obj: Record<string, unknown>, prefix = ''): RecordMetadata {
-    const flattened: Record<string, unknown> = {}
-
-    for (const key in obj) {
-      // eslint-disable-next-line no-prototype-builtins
-      if (obj.hasOwnProperty(key)) {
-        const newKey = prefix ? `${prefix}.${key}` : key
-        const value = obj[key]
-
-        if (value !== null && value !== undefined) {
-          if (typeof value === 'object' && !Array.isArray(value)) {
-            Object.assign(
-              flattened,
-              this.flatten(value as Record<string, unknown>, newKey),
-            )
-          }
-          else {
-            flattened[newKey] = value
-          }
-        }
-      }
-    }
-
-    return flattened as RecordMetadata
-  }
-
-  async getEmbeddings(documents: Document[]): Promise<PineconeRecord[]> {
-    const openAi = await this.getOpenAiApi()
-    const p = documents.map(async (doc) => {
-      const text = doc.pageContent
-      const embeddings = await openAi.embeddings.create({
-        model: 'text-embedding-ada-002',
-        input: text,
-      })
-
-      const values = embeddings.data[0].embedding
-
-      return {
-        id: objectId(),
-        values,
-        metadata: this.flatten({ ...doc.metadata, text }),
-      }
-    })
-    return Promise.all(p)
-  }
-
-  async similaritySearch(args: { runPrompt: string, searchNamespace: string }) {
-    const { runPrompt, searchNamespace } = args
-    const pineconeIndex = await this.getPineconeIndex(searchNamespace)
-
-    // get vector embedding for content
-    const emb = await this.getEmbeddings([new Document({ pageContent: runPrompt })])
-
-    const vector = emb[0].values
-
-    if (!vector)
-      throw abort('no vector')
-
-    // see closest matches
-    const r = await pineconeIndex.query({ vector, topK: 3, includeMetadata: true })
-
-    return (
-      r.matches?.map((m) => {
-        const data = m.metadata as Record<string, unknown>
-        return new Document({ pageContent: data.text as string, metadata: data })
-      }) || []
-    )
-  }
-
-  async getChatCompletion(args: AiCompletionSettings): Promise<EndpointResponse<AiResult>> {
-    const { useSimilaritySearch, searchNamespace, runPrompt } = args
-
-    const { anthropic, xai, openai } = await this.getAiModels()
-
-    if (useSimilaritySearch) {
-      if (!searchNamespace)
-        throw abort('searchNamespace required')
-
-      const sourceDocuments = await this.similaritySearch({ runPrompt, searchNamespace })
-
-      const searchResultText = sourceDocuments.map(d => d.pageContent).join('\n\n')
-
-      args.referenceInfo += searchResultText
-    }
-
-    const messages = await contentCommandUtil.getMessages(args)
-
-    const generateArgs = {
-      system: messages.map(m => `content(${m.role}): ${m.content}`).join('\n'),
-      prompt: runPrompt || 'Follow guidelines for provided objectives.',
-      temperature: 0.7,
-    }
-
-    this.log.info('sending messages', { data: { generateArgs } })
-
-    const model = await anthropic('claude-3-5-sonnet-latest')
-
-    const { text } = await generateText({ model, ...generateArgs })
-
-    // const response = await openAi.chat.completions.create({
-    //   model: 'gpt-4-turbo-preview',
-    //   max_tokens: 1000,
-    //   n: 1,
-    //   messages,
-    //   response_format: { type: 'json_object' },
-    // })
-
-    const rawCompletion = text
-
-    // const shortcodes = new Shortcodes({ fictionEnv: this.settings.fictionEnv })
-
-    const message = ''
-    const more = ''
-    // shortcodes.addShortcode<{
-    //   search?: string
-    //   description?: string
-    //   orientation?: 'portrait' | 'landscape' | 'squarish'
-    //   subject?: 'person' | 'object'
-    // }>('stock_img', async (args) => {
-    //   const { attributes } = args
-
-    //   const orientation = attributes?.orientation || 'squarish'
-    //   const subject = attributes?.subject || 'person'
-
-    //   const stock = await createStockMediaHandler()
-
-    //   const mediaItem = stock.getRandomByAspectRatio(orientation, { tags: ['object', 'image'] })
-
-    //   //  const search = attributes?.search || ''
-    //   // const description = attributes?.description || ''
-    //   // const _prompt = [
-    //   //   `Prompt: ${search}`,
-    //   //   `Format: ${description || 'none'}`,
-    //   //   `Constraints: make SURE the image has no text, logos, or watermarks on it.`,
-    //   //   `Style: ${objectives.imageStyle}.`,
-
-    //   // ].filter(Boolean).join('\n')
-
-    //   // const start = Date.now()
-    //   // this.log.info('creating image', { data: { prompt, orientation, orgId, userId } })
-    //   // const r = await this.settings.fictionAi.queries.AiImage.serve({ _action: 'createImage', prompt, orientation, orgId, userId }, { server: true })
-
-    //   // if (r.status === 'error' || !r.data) {
-    //   //   message = 'There was a "safety" API error during image generation. Try again, change image style if needed.'
-    //   //   more = 'This happens when images are similar to trademarked works, etc...'
-    //   //   throw new Error(message)
-    //   // }
-
-    //   // this.log.info(`created image in ${Math.round((Date.now() - start) / 1000)}s`, { data: { r } })
-    //   return mediaItem.url
-    // })
-
-    this.log.info('parsing raw completion', { data: { rawCompletion } })
-
-    let completion
-    try {
-      const parsedCompletion = await rawCompletion
-      completion = JSON.parse(parsedCompletion)
-      this.log.info('returning completion', { data: { completion } })
-    }
-    catch (e) {
-      this.log.error('error parsing completion', { data: { e, rawCompletion } })
-      return { status: 'error', data: { messages } }
-    }
+    const model = anthropic('claude-3-7-sonnet-20250219')
 
     return {
-      status: 'success',
-      message,
-      more,
-      data: {
-        completion,
-        messages,
-      },
-    }
-  }
-}
-
-interface ManageVectorsParams {
-  _action: 'indexDocuments' | 'clearDocuments'
-  orgId: string
-  namespace: string
-  data?: SourceItem[]
-}
-export class QueryManageVectors extends QueryAi {
-  async addVectors(args: { documents: Document[], namespace: string }) {
-    const { documents, namespace } = args
-    const pineconeIndex = await this.getPineconeIndex(namespace)
-
-    // Pinecone recommends a limit of 100 vectors per upsert request
-    const chunkSize = 50
-    for (let i = 0; i < documents.length; i += chunkSize) {
-      const chunk = documents.slice(i, i + chunkSize)
-      const records = await this.getEmbeddings(chunk)
-
-      records.forEach((record, ii) => {
-        this.log.info(`indexing vectors len:${documents.length} ${i}-${ii}`, {
-          data: { namespace, record },
-        })
-      })
-      await pineconeIndex.upsert(records)
+      model,
+      generateText,
     }
   }
 
-  async run(
-    params: ManageVectorsParams,
-    _meta: EndpointMeta,
-  ): Promise<EndpointResponse<unknown>> {
-    const { _action, orgId, namespace } = params
-
-    if (!_action)
-      throw abort('action required')
-    if (!orgId)
-      throw abort('userId required')
-
-    const message: string | undefined = undefined
-    const data: unknown = undefined
-
-    const pineconeIndex = await this.getPineconeIndex(namespace)
-
-    if (_action === 'clearDocuments') {
-      this.log.warn(`clearing vectors in ${namespace} namespace`)
-      await pineconeIndex.deleteAll()
-    }
-    else if (_action === 'indexDocuments') {
-      const docs
-        = params.data?.map((d) => {
-          return new Document({
-            pageContent: d.pageContent as string,
-            metadata: d.metadata,
-          })
-        }) || []
-
-      const splitter = new TextSplitter({ chunkSize: 1000, chunkOverlap: 100 })
-
-      const splitDocs = await splitter.splitDocuments(docs)
-
-      this.log.info(`documents ${docs.length} split to ${splitDocs.length}`)
-
-      await this.addVectors({ documents: splitDocs, namespace })
-    }
-
-    return { status: 'success', data, message, params }
-  }
-}
-
-type AiCompletionParams = {
-  _action: 'similaritySearch' | 'completion'
-} & AiCompletionSettings
-
-export class AiCompletion extends QueryAi {
-  async run(
-    params: AiCompletionParams,
-    _meta: EndpointMeta,
-  ): Promise<EndpointResponse<AiResult>> {
-    const { _action, runPrompt, searchNamespace } = params
-
-    if (!_action)
-      throw abort('action required')
-
-    const data: AiResult = { referenceInfo: '', messages: [] }
-
-    if (_action === 'similaritySearch') {
-      if (!searchNamespace)
-        throw abort('searchNamespace required')
-
-      const r = await this.similaritySearch({ runPrompt, searchNamespace })
-      data.referenceInfo = r.map(d => d.pageContent).join('\n\n')
-      return { status: 'success', data, params }
-    }
-    else if (_action === 'completion') {
-      return this.getChatCompletion(params)
-    }
-    else {
-      throw abort('invalid action')
-    }
-  }
-}
-
-type AiImageParams = {
-  _action?: 'createImage'
-  prompt: string
-  orientation: 'landscape' | 'portrait' | 'squarish'
-  orgId: string
-  userId: string
-}
-
-export class AiImage extends QueryAi {
-  async run(
-    params: AiImageParams,
-    _meta: EndpointMeta,
-  ): Promise<EndpointResponse<TableMediaConfig>> {
-    const { _action, orientation = 'squarish', prompt, orgId, userId } = params
-
-    const fictionMedia = this.settings.fictionMedia
-
-    if (!fictionMedia)
-      throw abort('fictionMedia required')
-
-    if (!_action)
-      throw abort('action required')
-
-    let data: TableMediaConfig | undefined = undefined
-
-    const openAi = await this.getOpenAiApi()
-
-    const sizes = { landscape: '1792x1024', portrait: '1024x1792', squarish: '1024x1024' } as const
-
-    const size = sizes[orientation] || sizes.squarish
-
+  private parseJsonFromCompletion(text: string): Record<string, unknown> {
     try {
-      const response = await openAi.images.generate({ model: 'dall-e-3', prompt, n: 1, size })
-
-      const url = response.data[0].url
-
-      if (!url)
-        throw abort('no image url returned')
-
-      const r = await fictionMedia.queries.ManageMedia.serve({ _action: 'createFromUrl', orgId, userId, fields: { prompt, sourceImageUrl: url } }, _meta)
-
-      if (r?.status === 'success') {
-        this.log.info('ai image created', { data: r.data })
-        data = r.data?.[0]
-      }
-
-      return { status: 'success', data, params }
+      // Extract JSON content from possible code blocks or raw JSON
+      const jsonContent = text.replace(/^```json\s*|\s*```$/g, '').trim()
+      return JSON.parse(jsonContent)
     }
     catch (error) {
-      const message = `error creating image (${(error as Error).message})`
-      this.log.error(message, { error })
-      return { status: 'error', message, data }
+      this.log.error('Failed to parse completion as JSON', {
+        data: { error, textLength: text.length },
+      })
+      throw new Error('Invalid JSON response from AI')
     }
   }
+
+  private async buildSystemMessages(args: {
+    format?: ContentFormat
+    objectives?: Record<string, string>
+    schema?: z.ZodType<any>
+    schemaJson?: Record<string, unknown>
+    referenceInfo?: string
+  }): Promise<CommandMessage[]> {
+    const { schema, schemaJson, referenceInfo } = args
+
+    let outputFormat: Record<string, unknown> = {}
+
+    // Add schema if provided
+    if (schema) {
+      const { default: zodToJsonSchema } = await import('zod-to-json-schema')
+      outputFormat = zodToJsonSchema(schema)
+    }
+    else if (schemaJson) {
+      outputFormat = schemaJson
+    }
+
+    // Build messages array
+    const messages: CommandMessage[] = [
+      {
+        role: 'system',
+        content: `<output_format_instructions>
+  - You MUST return ONLY valid JSON that EXACTLY follows the schema provided below.
+  - You MUST use the EXACT property names as specified in the schema.
+  - You MUST NOT add additional properties not defined in the schema.
+  - You MUST NOT rename or modify the property names under any circumstances.
+  - The output MUST be parseable as JSON.
+  - Return NOTHING except valid JSON conforming to this schema:
+
+  ${JSON.stringify(outputFormat, null, 2)}
+
+  This is a strict requirement Using incorrect property names will cause system failures.
+  </output_format_instructions>`,
+      },
+    ]
+
+    // Add reference info if provided
+    if (referenceInfo) {
+      messages.push({
+        role: 'system',
+        content: `<reference_info>${referenceInfo}</reference_info>`,
+      })
+    }
+
+    // Add a final reminder about schema adherence
+    messages.push({
+      role: 'system',
+      content: `<critical_reminder>
+  Remember, your response MUST output ONLY JSON use the exact property names "${Object.keys(outputFormat.properties || {}).join('", "')}" as specified in the schema.
+  </critical_reminder>`,
+    })
+
+    return messages
+  }
+
+  async generateImage(args: {
+    prompt: string
+    orientation?: 'portrait' | 'landscape' | 'squarish'
+    orgId?: string
+    userId?: string
+  }): Promise<MediaObject> {
+    const { prompt, orientation = 'landscape', orgId, userId } = args
+
+    const stock = await createStockMediaHandler()
+
+    if (!orgId || !userId)
+      throw abort('Missing orgId or userId')
+
+    const start = Date.now()
+    this.log.info('Generating image', { data: { prompt, orientation } })
+
+    try {
+      // Use OpenAI's DALL-E API for image generation
+      const openai = await this.getOpenAiApi()
+
+      const size = orientation === 'portrait'
+        ? '1024x1536'
+        : orientation === 'landscape'
+          ? '1536x1024'
+          : '1024x1024'
+
+      const response = await openai.images.generate({
+        model: 'gpt-image-1',
+        prompt: `${prompt}. No text, logos, or watermarks.`,
+        n: 1,
+        size,
+        quality: 'medium',
+      })
+
+      const sourceImageB64 = response.data?.[0]?.b64_json
+
+      if (!sourceImageB64)
+        throw abort('No image URL returned from OpenAI')
+
+      const formattedBase64 = `data:image/png;base64,${sourceImageB64}`
+
+      const r = await this.settings.fictionMedia?.queries.ManageMedia.serve({
+        _action: 'createFromBase64',
+        orgId,
+        userId,
+        base64Data: formattedBase64,
+      }, { server: true })
+
+      this.log.info(`created image in ${Math.round((Date.now() - start) / 1000)}s`)
+
+      return { url: r?.data?.[0]?.url || stock.getRandomByTags(['object']) } as MediaObject
+    }
+    catch (error) {
+      this.log.error('Image generation error', { error })
+
+      const mediaItem = stock.getRandomByAspectRatio(orientation, { tags: ['object', 'image'] })
+      return mediaItem as MediaObject
+    }
+  }
+
+  //   // System message templates
+  //   private getWebsiteCopyGuidelines(): string {
+  //     return `<expert_copywriter>
+  // You are an elite copywriter with 20+ years of experience creating sharp, concise marketing copy.
+  // Your goal is to craft compelling, customer-centric content that converts.
+
+  // <principles>
+  // - Write with precision and clarity - every word must earn its place
+  // - Focus on customer pain points and practical solutions
+  // - Use direct language that builds credibility and trust
+  // - Employ neurolinguistic patterns that motivate action
+  // - Create copy that's both SEO-effective and human-engaging
+  // </principles>
+
+  // <avoid>
+  // - Clichés, buzzwords, and marketing jargon
+  // - Excessive adjectives and adverbs
+  // - Hyperbole and unsubstantiated claims
+  // - Generic statements that could apply to any business
+  // - Redundancy and unnecessary words
+  // </avoid>
+  // </expert_copywriter>`
+  //   }
+
+  //   private getAutocompleteGuidelines(): string {
+  //     return `<autocomplete_assistant>
+  // You are an elite writing assistant specializing in precise, engaging suggestions.
+
+  // <output_guidelines>
+  // - Provide concise, impactful completions (3-16 words)
+  // - Focus on strong nouns and active verbs
+  // - Avoid clichés and predictable phrases
+  // - Match the existing tone and flow
+  // - Add specific details, data points, or unexpected insights
+  // - Create natural transitions between ideas
+  // - Trim all unnecessary words
+  // </output_guidelines>
+  // </autocomplete_assistant>`
+  //   }
+
+  //   private getBrandVoiceGuidelines(): string {
+  //     return `<brand_strategist>
+  // You are a top brand strategist who develops unique, authentic brand voices.
+
+  // <voice_principles>
+  // - Create distinctive tonal patterns that stand out in the market
+  // - Balance brand authenticity with audience resonance
+  // - Develop language frameworks that convey brand values
+  // - Craft messaging that triggers emotional responses
+  // - Design verbal identity elements that enhance brand recognition
+  // </voice_principles>
+
+  // <voice_components>
+  // - Word choice and vocabulary range
+  // - Sentence structure and rhythm
+  // - Storytelling approach and narrative framing
+  // - Use of metaphors, analogies and industry terminology
+  // - Balance of logical and emotional appeals
+  // </voice_components>
+  // </brand_strategist>`
+  //   }
+
+  //   // New account setup guidelines
+  //   private getAccountSetupGuidelines(): string {
+  //     return `<profile_specialist>
+  // You are an expert identity consultant who helps professionals craft authentic, impactful digital presences.
+
+  // <core_principles>
+  // - Emphasize genuine expertise and unique perspectives
+  // - Balance professionalism with distinct personality traits
+  // - Transform vague generalities into specific, memorable details
+  // - Capture voice and character in minimal word count
+  // - Identify and highlight true differentiators
+  // </core_principles>
+
+  // <writing_approach>
+  // - Use concrete details instead of abstract claims
+  // - Create tight sentences with purposeful structure
+  // - Choose unexpected verbs and precise nouns
+  // - Integrate subtle narrative elements that create interest
+  // - Focus on genuine achievements rather than self-promotion
+  // </writing_approach>
+
+  // <avoid>
+  // - LinkedIn-style corporate buzzwords
+  // - Generic professional clichés (e.g., "passionate", "dedicated")
+  // - Personality trait lists without supporting context
+  // - Overused intro formulas and empty phrases
+  // - Self-designated expertise without evidence
+  // - Alignment with obvious industry values everyone shares
+  // </avoid>
+
+  // <output_aims>
+  // - Create descriptions people immediately recognize as "sounding like them but better"
+  // - Develop bios that stand out in crowded professional spaces
+  // - Balance being distinctive with relevant industry expectations
+  // - Find fresh approaches to standard profile elements
+  // - Craft content that feels simultaneously authentic and aspirational
+  // </output_aims>
+  // </profile_specialist>`
+  //   }
 }

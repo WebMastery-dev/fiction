@@ -1,17 +1,17 @@
 import type { CardFactory } from '@fiction/site/cardFactory'
 import type { StandardUserConfig } from '@fiction/site/schema'
-import { PostHandlingSchema } from '@fiction/core'
+import { MediaBasicSchema } from '@fiction/core'
+import { PostHandlingSchema } from '@fiction/posts'
 import { createOption } from '@fiction/ui'
 import { z } from 'zod'
 
 // Schema definition
 export const schema = z.object({
   posts: PostHandlingSchema.optional().describe('Blog post configuration and handling'),
-  index: z.object({
-    featuredCount: z.number().optional().describe('Number of featured posts to display prominently'),
-    sidebar: z.enum(['left', 'right', 'none', '']).optional().describe('Sidebar position for the blog layout'),
-    imagePosition: z.enum(['left', 'right', 'top', 'cover', 'none']).optional().describe('Position of the image in the blog layout'),
-  }).optional(),
+  featuredCount: z.number().optional().describe('Number of featured posts to display prominently'),
+  title: z.string().optional().describe('Title for the blog section'),
+  subTitle: z.string().optional().describe('Description for the blog section'),
+  media: MediaBasicSchema.optional().describe('Header media for the blog section'),
 })
 
 export type UserConfig = z.infer<typeof schema> & StandardUserConfig
@@ -26,11 +26,30 @@ const options = [
     options: [
       createOption({
         schema,
-        key: 'index.featuredCount',
+        key: 'featuredCount',
         label: 'Featured Count',
         input: 'InputRadioButton',
-        props: { uiSize: 'sm' },
-        list: [{ value: 1, label: '1' }, { value: 2, label: '2' }, { value: 3, label: '3' }],
+        list: ['0', '1', '2', '3', '4', '5'],
+      }),
+      createOption({
+        schema,
+        key: 'title',
+        label: 'Title',
+        input: 'InputText',
+        placeholder: 'Enter a title',
+      }),
+      createOption({
+        schema,
+        key: 'subTitle',
+        label: 'Subtitle',
+        input: 'InputText',
+        placeholder: 'Enter a subtitle',
+      }),
+      createOption({
+        schema,
+        key: 'media',
+        label: 'Header Media',
+        input: 'InputMedia',
       }),
     ],
   }),
@@ -39,11 +58,17 @@ const options = [
 
 // Main config function
 export async function getConfig(args: { templateId: string, factory: CardFactory }) {
-  const { factory } = args
-
   return {
     options,
     schema,
-    userConfig: {},
+    userConfig: {
+      featuredCount: 1,
+      title: '[@name]',
+      subTitle: '[@headline]',
+      media: {
+        type: 'image',
+        url: '[@avatar]',
+      },
+    },
   }
 }

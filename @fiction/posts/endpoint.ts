@@ -1,8 +1,8 @@
-import type { EndpointMeta, EndpointResponse, IndexMeta, IndexQuery, Organization } from '@fiction/core'
+import type { EndpointMeta, EndpointResponse, IndexMeta, IndexQuery } from '@fiction/core'
 import type { FictionPosts } from '.'
 import type { FictionPostsSettings } from './index'
 import type { TablePostConfig } from './schema'
-import { abort, applyComplexFilters, dayjs, deepMerge, getOrgAvatar, incrementSlugId, objectId, omit, Query, standardTable, toSlug } from '@fiction/core'
+import { abort, applyComplexFilters, dayjs, deepMerge, incrementSlugId, objectId, omit, Query, standardTable, toSlug } from '@fiction/core'
 
 import { t } from './schema'
 import { trackPostMetrics } from './utils/analytics'
@@ -39,6 +39,7 @@ export type ManagePostParamsRequest =
   | { _action: 'deletePosts', selectedIds?: string[], orgId: string, userId: string }
   | { _action: 'restoreFromRevision', where: WherePost, revisionId: string }
   | { _action: 'emailSendTest', where: WherePost, testEmails: string[], maxEmails?: number }
+  | { _action: 'generate', where?: WherePost, mode: 'outline' | 'full', fields: Partial<TablePostConfig>, orgId: string }
 
 export type ManagePostParams = ManagePostParamsRequest & {
   userId?: string
@@ -86,6 +87,9 @@ export class QueryManagePost extends PostsQuery {
         break
       case 'emailSendTest':
         r = await this.emailSendTest(params, meta)
+        break
+      case 'generate':
+        r = await this.generatePostContent(params, meta)
         break
       default:
         return { status: 'error', message: 'Invalid action' }
@@ -246,19 +250,6 @@ export class QueryManagePost extends PostsQuery {
 
     if (post.postId) {
       post.authors = await db.select([`${t.user}.userId`, `${t.user}.email`, `${t.user}.fullName`, `${t.postAuthor}.priority`]).from(t.postAuthor).join(t.user, `${t.user}.user_id`, `=`, `${t.postAuthor}.user_id`).where(`${t.postAuthor}.post_id`, post.postId).orderBy(`${t.postAuthor}.priority`, 'asc')
-
-      // get defaults from org details
-      const sel: (keyof Organization)[] = ['orgName', 'orgEmail', 'senderName', 'senderEmail', 'companyName', 'websiteUrl', 'streetAddress', 'avatar']
-      const orgData = await db.select<Partial<Organization>>(sel).from(t.org).where(`${t.org}.orgId`, orgId).first()
-
-      if (orgData) {
-        post.sender = {
-          ...orgData,
-          avatar: getOrgAvatar(orgData, { useSender: true }),
-          senderName: orgData.senderName || orgData?.orgName,
-          senderEmail: orgData.senderEmail || orgData?.orgEmail,
-        }
-      }
     }
 
     if (loadDraft && post.draft)
@@ -325,13 +316,9 @@ export class QueryManagePost extends PostsQuery {
 
     prepped.draft = {}
 
-    const { senderName, senderEmail, companyName, websiteUrl, streetAddress } = fields.sender || {}
-    const orgUpdateFields: { [K in keyof Organization]?: Organization[K] } = { senderName, senderEmail, companyName, websiteUrl, streetAddress }
-
     await Promise.all([
       db(t.posts).update(prepped).where({ postId }),
       this.updateAssociations({ type: 'authors', postId, fields, orgId }),
-      this.settings.fictionUser.queries.ManageOrganization.serve({ _action: 'update', where: { orgId }, fields: orgUpdateFields }, { server: true }),
     ])
 
     const result = await this.getPost({ ...params, where: { orgId, ...where }, _action: 'get' }, { ...meta, caller: 'updatePostEnd' })
@@ -615,6 +602,52 @@ export class QueryManagePost extends PostsQuery {
     }, meta)
   }
 
+  private async generatePostContent(params: ManagePostParams & { _action: 'generate' }, meta: EndpointMeta): Promise<EndpointResponse<TablePostConfig[]>> {
+    const { where, mode, fields, orgId, userId } = params
+
+    // Get org data and existing post if applicable
+    const [org, existingPost] = await Promise.all([
+      this.settings.fictionUser.queries.ManageOrganization.serve({ _action: 'read', where: { orgId } }, { server: true }).then(r => r.data),
+      where?.postId || where?.slug ? this.getPost({ _action: 'get', where, orgId }, meta).then(r => r.data?.[0]) : null,
+    ])
+
+    // Create new post (requires userId)
+    if (!userId)
+      throw abort('userId required for new post', meta)
+
+    if (!org)
+      throw abort('org not found', meta)
+
+    if (where && !existingPost)
+      throw abort('Post not found', meta)
+
+    try {
+      // Generate content
+      const { getGenerationParams } = await import('./utils/generation')
+      const generationParams = getGenerationParams({ org, mode, post: fields })
+      const generatedFields = await this.settings.fictionAi.queries.QueryAi.serve({
+        orgId,
+        userId,
+        _action: 'completion',
+        ...generationParams,
+      }, { server: true }).then(r => (r.data?.completion || {}) as TablePostConfig)
+
+      // Create new post or update existing one
+      if (existingPost && where) {
+        const content = existingPost?.content ? `${existingPost?.content || ''}\n\n${generatedFields.content}` : generatedFields.content
+        const f = { ...fields, ...generatedFields, content }
+        return await this.updatePost({ _action: 'update', where, orgId, userId, fields: f }, meta)
+      }
+      else {
+        const f = { ...fields, ...generatedFields }
+        return await this.createPost({ _action: 'create', fields: f, orgId, userId }, meta)
+      }
+    }
+    catch (error) {
+      return { status: 'error', message: `Generation failed: ${(error as Error).message}` }
+    }
+  }
+
   private async emailSendTest(params: ManagePostParams & { _action: 'emailSendTest' }, meta: EndpointMeta): Promise<ManagePostResponse> {
     const { orgId, userId, where, testEmails, maxEmails = 10 } = params
     const { fictionUser, fictionEmail } = this.settings
@@ -642,7 +675,7 @@ export class QueryManagePost extends PostsQuery {
 
     const [post, org] = await Promise.all([
       this.getPost({ _action: 'get', orgId, userId, where }, meta).then(r => r.data?.[0]),
-      fictionUser.queries.ManageOrganization.serve({ _action: 'retrieve', where: { orgId } }, { server: true }).then(r => r.data),
+      fictionUser.queries.ManageOrganization.serve({ _action: 'read', where: { orgId } }, { server: true }).then(r => r.data),
     ])
 
     if (!post || !org) {
