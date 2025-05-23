@@ -1,7 +1,7 @@
 import { vue } from '@fiction/core'
 import { cardTemplate } from '@fiction/site/card.js'
 import { InputOption } from '@fiction/ui'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 
 export const templateId = 'cardPageWrapV1'
 
@@ -27,7 +27,7 @@ export const template = cardTemplate({
   icon: 'i-tabler-layout-board-split',
   getBaseConfig: () => {
     return {
-      standard: { spaceSize: 'none', showOnSingle: true },
+      standard: { spaceSize: 'none' as const, showOnSingle: true },
     }
   },
   getConfig: async () => {

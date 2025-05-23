@@ -31,7 +31,7 @@ const profile = vue.ref<ProfileData>({
   interests: [],
   influences: [],
   avatar: undefined,
-  promptImageKey: 'watercolor',
+  promptImageKey: 'swissPrecision',
   promptContentKey: 'hero',
   primaryColor: 'blue',
 })
@@ -306,7 +306,7 @@ const stepConfig: StepConfig<StepKey> = {
             const r = await saveUtil.forceSync()
 
             if (r?.status === 'success') {
-              await card.goto('/?onboarded=true')
+              await card.goto('/?_view=welcome')
             }
           }
           finally {
@@ -348,6 +348,7 @@ const stepConfig: StepConfig<StepKey> = {
               ui-size="lg"
               required
               :input-props="{ autofocus: true, beforeInput: 'linkedin.com/in/' }"
+              data-test-id="linkedinHandle"
             />
           </div>
 
@@ -369,6 +370,7 @@ const stepConfig: StepConfig<StepKey> = {
                 uiSize: 'xxs',
               }"
               required
+              data-test-id="avatar"
             />
 
             <ElInput
@@ -377,6 +379,7 @@ const stepConfig: StepConfig<StepKey> = {
               label="Your Name"
               placeholder="Enter Your Name"
               required
+              data-test-id="name"
             />
 
             <ElInput
@@ -391,6 +394,7 @@ const stepConfig: StepConfig<StepKey> = {
                 table: 'fiction_org',
                 columns: [{ name: 'handle' }],
               }"
+              data-test-id="handle"
             />
           </div>
 
@@ -402,6 +406,7 @@ const stepConfig: StepConfig<StepKey> = {
               label="Headline"
               placeholder="Leader and innovator."
               description="A concise description of what you do"
+              data-test-id="headline"
             />
 
             <ElInput
@@ -410,33 +415,37 @@ const stepConfig: StepConfig<StepKey> = {
               label="About"
               placeholder="A brief description of yourself"
               :input-props="{ rows: 5 }"
+              data-test-id="about"
             />
           </div>
           <div v-if="step.key === 'interests'" class="space-y-6">
-            <ElInput
-              v-model="profile.goal"
-              input="InputTextarea"
-              label="Goal"
-              placeholder="Write your goal"
-              description="In a few words, what do you want to achieve?"
-            />
             <ElInput
               v-model="profile.interests"
               input="InputTags"
               label="Interests"
               placeholder="Add interests"
               description="Topics you're passionate about (e.g., Design, Marketing, AI, Politics)"
+              data-test-id="interests"
             />
 
             <ElInput
               v-model="profile.influences"
               input="InputTags"
-              label="Influences"
+              label="Role Models"
               placeholder="Add influences"
               description="People, characters, or systems that inspire your style"
+              data-test-id="influences"
             />
           </div>
           <div v-if="step.key === 'branding'" class="space-y-6">
+            <ElInput
+              v-model="profile.promise"
+              input="InputText"
+              label="Your Content Promise"
+              placeholder="Write your promise headline"
+              description="A 2-4 word tagline for the value you provide (e.g. 'Learn to code')"
+              data-test-id="promise"
+            />
             <ElInput
               v-model="profile.primaryColor"
               input="InputColorTheme"
@@ -446,6 +455,7 @@ const stepConfig: StepConfig<StepKey> = {
                 mode: 'bright',
               }"
               required
+              data-test-id="primaryColor"
             />
 
             <ElInput
@@ -455,6 +465,7 @@ const stepConfig: StepConfig<StepKey> = {
               description="Used for generating images"
               :input-props="{ list: getImageStyles() }"
               required
+              data-test-id="motif"
             />
 
             <ElInput
@@ -464,6 +475,7 @@ const stepConfig: StepConfig<StepKey> = {
               description="Used for generating content"
               :input-props="{ list: getArchetypesStyles() }"
               required
+              data-test-id="archetype"
             />
           </div>
         </ElStepNav>

@@ -3,7 +3,7 @@ import type { StandardUserConfig } from '@fiction/site/schema'
 import type { StockMedia } from '@fiction/ui/stock'
 import { NavListItemSchema } from '@fiction/core'
 import { createOption } from '@fiction/ui'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 
 const logoSchema = NavListItemSchema.pick({
   label: true,
@@ -14,9 +14,9 @@ const logoSchema = NavListItemSchema.pick({
 
 // Schema
 export const schema = z.object({
-  label: z.string().optional(),
-  layout: z.enum(['inline', 'stacked']).optional(),
-  items: z.array(logoSchema).optional(),
+  label: z.string().optional().meta({ ai: false, description: 'Section title or heading' }),
+  layout: z.enum(['inline', 'stacked']).optional().meta({ ai: false, description: 'Logo arrangement style' }),
+  items: z.array(logoSchema).optional().meta({ ai: false, description: 'Collection of logos to display' }),
 })
 
 export type LogoConfig = z.infer<typeof logoSchema>

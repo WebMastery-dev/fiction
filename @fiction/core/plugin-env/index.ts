@@ -13,7 +13,7 @@ import { version as fictionVersion } from '../package.json'
 import { FictionObject } from '../plugin.js'
 import { onBrowserEvent } from '../utils/eventBrowser.js'
 import { TypedEventTarget } from '../utils/eventTarget.js'
-import { crossVar, isApp, isCi, isDev, isNode, isTest, onResetUi, resetUi, runHooks, runHooksSync, safeDirname, shortId, toSnake, vue, waitFor } from '../utils/index.js'
+import { crossVar, HooksUtil, isApp, isCi, isDev, isNode, isTest, onResetUi, resetUi, runHooks, runHooksSync, safeDirname, shortId, toSnake, vue, waitFor } from '../utils/index.js'
 import { logMemoryUsage } from '../utils/nodeUtils.js'
 import { standardAppCommands } from './commands.js'
 import { compileApplication } from './entry.js'
@@ -36,12 +36,13 @@ export interface MetaAppDetails {
   streetAddress?: string
   termsUrl?: string
   privacyUrl?: string
+  systemOrgId?: string
+  admins?: string[] // email list
   siteId?: string // set dynamically
-  orgId?: string // set dynamically
   userId?: string // set dynamically
 }
 export interface FictionControlSettings {
-  hooks?: HookType<FictionEnvHookDictionary>[]
+  hooksOld?: HookType<FictionEnvHookDictionary>[]
   generators?: ConfigFileGenerator[]
   envFiles?: string[]
   envFilesProd?: string[]
@@ -84,6 +85,10 @@ export type EnvEventMap = {
   onNewOrganization: CustomEvent<{ org: Organization, userId: string, withDefaults?: boolean }>
 }
 
+export type EnvHookEvents = {
+  generate: () => Promise<void>
+}
+
 export class FictionEnv<
   S extends BaseCompiled = BaseCompiled,
 > extends FictionObject<FictionControlSettings> {
@@ -92,7 +97,8 @@ export class FictionEnv<
   events = new TypedEventTarget<EnvEventMap>({ fictionEnv: this })
   generatedConfig?: S
   commands = this.settings.commands || standardAppCommands
-  hooks = this.settings.hooks || []
+  hooks = new HooksUtil<EnvHookEvents>()
+  hooksOld = this.settings.hooksOld || []
   generators = this.settings.generators || []
   envFiles = this.settings.envFiles || []
   envFilesProd = this.settings.envFilesProd || []
@@ -151,15 +157,15 @@ export class FictionEnv<
   }
 
   async runHooks<T extends keyof FictionEnvHookDictionary>(hook: T, ...args: FictionEnvHookDictionary[T]['args']) {
-    return runHooks<FictionEnvHookDictionary, T>({ list: this.hooks, hook, args })
+    return runHooks<FictionEnvHookDictionary, T>({ list: this.hooksOld, hook, args })
   }
 
   runHooksSync<T extends keyof FictionEnvHookDictionary>(hook: T, ...args: FictionEnvHookDictionary[T]['args']) {
-    return runHooksSync<FictionEnvHookDictionary, T>({ list: this.hooks, hook, args })
+    return runHooksSync<FictionEnvHookDictionary, T>({ list: this.hooksOld, hook, args })
   }
 
   public addHook<T extends HookType<FictionEnvHookDictionary>>(hook: T): void {
-    this.hooks.push(hook)
+    this.hooksOld.push(hook)
   }
 
   constructor(settings: FictionControlSettings) {
@@ -188,7 +194,8 @@ export class FictionEnv<
 
     const flags = Object.entries(flagsList).map(([key, value]) => `${key}: ${value}`).join(', ')
 
-    this.meta = typeof this.settings.meta === 'function' ? this.settings.meta(this) : this.settings.meta || {}
+    const appMeta = typeof this.settings.meta === 'function' ? this.settings.meta(this) : this.settings.meta || {}
+    this.meta = { systemOrgId: 'system', ...appMeta }
 
     this.log.info(`[start] environment`, {
       data: {
@@ -202,21 +209,6 @@ export class FictionEnv<
 
     if (isNode())
       this.nodeInit()
-
-    this.addHook({
-      hook: 'staticSchema',
-      caller: 'envConfig',
-      context: 'cli',
-      callback: async (existing) => {
-        const commandKeys = this.commands?.map(_ => _.command).sort()
-        const envVarKeys = this.getVars().map(_ => _.name).sort()
-        return {
-          ...existing,
-          commands: { enum: commandKeys, type: 'string' },
-          vars: { enum: envVarKeys, type: 'string' },
-        }
-      },
-    })
 
     envConfig.list.forEach(c => c.onLoad({ fictionEnv: this }))
 
@@ -418,11 +410,8 @@ export class FictionEnv<
     this.envFiles.forEach((envFile) => {
       const { error, parsed } = dotenv.config({ path: path.resolve(envFile) })
       if (parsed) {
-        this.log.info(`loaded envFile: ${envFile}`, {
-          data: {
-            keys: Object.entries(parsed || {}).map(([key, v]) => `${key}(${v.length})`).join(', '),
-          },
-        })
+        const keys = Object.entries(parsed || {}).map(([key, v]) => `${key}(${v.length})`).join(', ')
+        this.log.info(`loaded envFile: ${envFile}, keys: ${keys.length}`)
       }
       else if (error) {
         this.log.warn(`envFile does not exist`, { data: { envFile } })
@@ -462,19 +451,8 @@ export class FictionEnv<
 
   async generate() {
     await generateStaticConfig(this)
-  }
 
-  onCommand(
-    commands: string[],
-    callback: (command: string, options: CliOptions) => Promise<void>,
-  ): void {
-    this.hooks.push({
-      hook: 'runCommand',
-      callback: async (command: string, opts: CliOptions) => {
-        if (commands.includes(command))
-          await callback(command, opts)
-      },
-    })
+    await this.hooks.run('generate')
   }
 
   /**
@@ -495,7 +473,7 @@ export class FictionEnv<
 
     const options = { command: cmd?.command, ...cmd?.options }
 
-    await runHooks({ list: this.hooks, hook: 'runCommand', args: [options.command || 'not_set', options] })
+    await runHooks({ list: this.hooksOld, hook: 'runCommand', args: [options.command || 'not_set', options] })
 
     if (serviceConfig?.runCommand)
       await serviceConfig.runCommand({ context, command: options.command || 'not_set', options, cliVars, runVars })

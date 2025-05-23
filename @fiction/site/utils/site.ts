@@ -138,6 +138,9 @@ export async function saveSiteDraft(args: { site: Site, resetToPublished?: boole
 
   site.saveUtil.clear()
 
+  if (!r.data)
+    throw new Error('no data returned from saveSiteDraft')
+
   return r.data
 }
 
@@ -149,7 +152,7 @@ export async function saveSite(args: {
   successMessage: string
   isPublishingDomains?: boolean
   minTime?: number
-}) {
+}): Promise<Partial<TableSiteConfig>> {
   const { site, onlyKeys, delayUntilSaveConfig, successMessage, isPublishingDomains, minTime, scope = 'publish' } = args
 
   if (scope === 'draft') {
@@ -193,6 +196,9 @@ export async function saveSite(args: {
 
   site.saveUtil.clear()
 
+  if (!r.data)
+    throw new Error('no data returned from saveSite')
+
   return r.data
 }
 
@@ -208,7 +214,7 @@ export async function updateSite(args: {
   if (!newConfig)
     return
 
-  const availableKeys = ['title', 'userConfig', 'changeId', 'handle', 'customDomains', 'themeId', 'status']
+  const availableKeys = ['title', 'userConfig', 'changeId', 'handle', 'customDomains', 'themeId', 'status', 'nav']
   const entries = Object.entries(newConfig).filter(([key]) => availableKeys.includes(key))
 
   entries.forEach(([key, value]) => {

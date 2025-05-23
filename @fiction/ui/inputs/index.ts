@@ -1,6 +1,6 @@
 import type { ActionButton, MediaObject, NavListItem } from '@fiction/core'
 import type { SchemaFields } from '@fiction/core/utils/schemas'
-import type { z } from 'zod'
+import type { z } from 'zod/v4'
 import { FictionObject, normList, removeUndefined, vue } from '@fiction/core'
 
 type InputEntry = { el: vue.Component, shape?: string[] }
@@ -13,8 +13,8 @@ export const inputs = {
   InputSuperTitle: { el: def(() => import('./InputSuperTitle.vue')), shape: ['icon.*', 'text', 'theme', 'href'] },
   InputStandardSize: { el: def(() => import('./InputStandardSize.vue')) },
   InputBanner: { el: def(() => import('./InputBanner.vue')) },
-  InputBrand: { el: def(() => import('./InputBrand.vue')), shape: ['action.*', 'logo.*', 'tagline', 'href'] },
-  InputActionArea: { el: def(() => import('./InputActionArea.vue')), shape: ['buttons.*', 'subscribe.*', 'proof.*', 'design', 'size', 'theme', 'title', 'variant'] },
+  // InputBrand: { el: def(() => import('./InputBrand.vue')), shape: ['action.*', 'logo.*', 'tagline', 'href'] },
+  // InputActionArea: { el: def(() => import('./InputActionArea.vue')), shape: ['buttons.*', 'subscribe.*', 'proof.*', 'design', 'size', 'theme', 'title', 'variant'] },
   InputControl: { el: def(() => import('./InputControl.vue')) },
   InputProse: { el: def(() => import('./InputProse.vue')) },
   InputAuthors: { el: def(() => import('./InputAuthors.vue')) },
@@ -221,17 +221,17 @@ export class InputOption extends FictionObject<InputOptionSettings> {
 // Key validation based on input type and schema
 type ValidOptionKey<
   TInput extends InputComponent,
-  TSchema extends z.ZodObject<any> | undefined,
+  TSchema extends z.ZodType<any> | undefined,
 > = TInput extends 'group' | 'title' | 'InputControl'
   ? string
-  : TSchema extends z.ZodObject<any>
+  : TSchema extends z.ZodType<any>
     ? SchemaFields<TSchema> | '*'
     : string
 
 // Settings interface for createOption
 type CreateOptionSettings<
   TInput extends InputComponent,
-  TSchema extends z.ZodObject<any> | undefined = undefined,
+  TSchema extends z.ZodType<any> | undefined = undefined,
 > = {
   input: TInput
   key: ValidOptionKey<TInput, TSchema>
@@ -244,7 +244,7 @@ type CreateOptionSettings<
 // Main function with improved type handling
 export function createOption<
   TInput extends InputComponent,
-  TSchema extends z.ZodObject<any> | undefined = undefined,
+  TSchema extends z.ZodType<any> | undefined = undefined,
 >(settings: CreateOptionSettings<TInput, TSchema>): InputOption {
   const { schema, ...inputSettings } = settings
   const adjustedKey = inputSettings.key.split('.0.').pop() || inputSettings.key

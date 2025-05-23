@@ -1,23 +1,23 @@
 import type { CardFactory } from '@fiction/site/cardFactory'
 import type { StandardUserConfig } from '@fiction/site/schema'
 import type { StockMedia } from '@fiction/ui/stock'
-import { MediaDisplaySchema } from '@fiction/core'
+import { MediaSchema } from '@fiction/core'
 import { createOption } from '@fiction/ui'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 
 const MarqueeItemSchema = z.object({
-  title: z.string().optional().describe('Primary text shown on hover'),
-  subTitle: z.string().optional().describe('Secondary text shown on hover'),
-  href: z.string().optional().describe('Navigation link - use full URL for external links'),
-  media: MediaDisplaySchema.optional().describe('Background media for the item'),
+  title: z.string().optional().meta({ description: 'Primary text shown on hover' }),
+  subTitle: z.string().optional().meta({ description: 'Secondary text shown on hover' }),
+  href: z.string().optional().meta({ description: 'Navigation link - use full URL for external links' }),
+  media: MediaSchema.optional().meta({ description: 'Background media for the item' }),
 })
 
 const schema = z.object({
-  items: z.array(MarqueeItemSchema).describe('Media items to display in the marquee'),
-  direction: z.enum(['left', 'right']).optional().describe('Scroll direction'),
-  stagger: z.boolean().optional().describe('Enable staggered item positioning'),
-  speed: z.number().min(1).max(20).optional().describe('Animation speed in seconds'),
-  showAllText: z.boolean().optional().describe('Show text overlay on items'),
+  items: z.array(MarqueeItemSchema).meta({ description: 'Media items to display in the marquee' }),
+  direction: z.enum(['left', 'right']).optional().meta({ description: 'Scroll direction' }),
+  stagger: z.boolean().optional().meta({ description: 'Enable staggered item positioning' }),
+  speed: z.number().min(1).max(20).optional().meta({ description: 'Animation speed in seconds' }),
+  showAllText: z.boolean().optional().meta({ description: 'Show text overlay on items' }),
 })
 
 export type MarqueeItem = z.infer<typeof MarqueeItemSchema>

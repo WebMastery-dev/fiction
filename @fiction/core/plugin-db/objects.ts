@@ -1,7 +1,6 @@
 import type { Knex } from 'knex'
-import type { ZodSchema } from 'zod'
 import type { LogHelper } from '../plugin-log/index.js'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import { log } from '../plugin-log/index.js'
 import { FictionObject } from '../plugin.js'
 import { toSnake } from '../utils/casing.js'
@@ -26,7 +25,7 @@ export type ColSettings<U extends string = string, T extends ColDefaultValue = C
   key: U
   make: MakeCol
   sec?: SecurityType
-  sch: (args: { z: typeof z }) => ZodSchema<T>
+  sch: (args: { z: typeof z }) => z.ZodType<T>
   prepare?: PrepareForStorage<T>
 }
 

@@ -3,35 +3,36 @@ import type { CardFactory } from '@fiction/site/cardFactory'
 import type { StandardUserConfig } from '@fiction/site/schema'
 import type { InputOption } from '@fiction/ui'
 import type { StockMedia } from '@fiction/ui/stock/index.js'
-import { ActionAreaSchema, colorThemeUser, MediaDisplaySchema, SizeSchema, SuperTitleSchema } from '@fiction/core'
+import type { title } from 'node:process'
+import { ActionAreaSchema, colorThemeUser, MediaSchema, SizeSchema, SuperTitleSchema } from '@fiction/core'
 import { createOption } from '@fiction/ui'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 
 const BentoItemSchema = z.object({
   // Content Elements
-  superTitle: SuperTitleSchema.optional().describe('Short attention-grabbing text above title [@ai]'),
-  title: z.string().optional().describe('Main headline for this content box [@ai]'),
-  content: z.string().optional().describe('Supporting text that expands on your title - aim for 1-2 sentences [@ai]'),
-  media: MediaDisplaySchema.optional().describe('Visual content to display in this box [@ai]'),
-  href: z.string().optional().describe('Make entire box clickable'),
-  action: ActionAreaSchema.optional().describe('Add buttons or interactive elements [@ai]'),
+  superTitle: SuperTitleSchema.optional().meta({ ai: true, description: 'Short attention-grabbing text above title' }),
+  title: z.string().optional().meta({ ai: true, description: 'Main headline for this content box' }),
+  content: z.string().optional().meta({ ai: true, description: 'Supporting text that expands on your title - aim for 1-2 sentences' }),
+  media: MediaSchema.optional().meta({ ai: true, description: 'Visual content to display in this box' }),
+  href: z.string().optional().meta({ ai: false, description: 'Make entire box clickable' }),
+  action: ActionAreaSchema.optional().meta({ ai: true, description: 'Add buttons or interactive elements' }),
 
   // Visual Style
-  bg: MediaDisplaySchema.optional().describe('Background image or video [@ai]'),
-  theme: z.enum(colorThemeUser).optional().describe('Color theme for this box'),
-  themeMode: z.enum(['light', 'dark', 'auto']).optional().describe('Adjust content contrast against background'),
+  bg: MediaSchema.optional().meta({ ai: true, description: 'Background image or video' }),
+  theme: z.enum(colorThemeUser).optional().meta({ ai: false, description: 'Color theme for this box' }),
+  themeMode: z.enum(['light', 'dark', 'auto']).optional().meta({ ai: false, description: 'Adjust content contrast against background' }),
 
   // Layout Controls
-  cols: z.number().min(1).max(12).optional().describe('Box width in columns (1-12)'),
-  rows: z.number().min(1).max(12).optional().describe('Box height in rows (1-12)'),
-  verticalPosition: z.enum(['top', 'center', 'bottom']).optional().describe('Vertical content alignment'),
-  horizontalPosition: z.enum(['left', 'center', 'right']).optional().describe('Horizontal content alignment'),
+  cols: z.number().min(1).max(12).optional().meta({ ai: false, description: 'Box width in columns (1-12)' }),
+  rows: z.number().min(1).max(12).optional().meta({ ai: false, description: 'Box height in rows (1-12)' }),
+  verticalPosition: z.enum(['top', 'center', 'bottom']).optional().meta({ ai: false, description: 'Vertical content alignment' }),
+  horizontalPosition: z.enum(['left', 'center', 'right']).optional().meta({ ai: false, description: 'Horizontal content alignment' }),
 })
 
 export const schema = z.object({
-  items: z.array(BentoItemSchema).describe('Collection of content boxes in grid layout [@ai]'),
-  gapSize: SizeSchema.optional().describe('Spacing between boxes'),
-  animate: z.enum(['expand', 'swipe', '']).optional().describe('Animation style for box appearance'),
+  items: z.array(BentoItemSchema).meta({ ai: true, description: 'Collection of content boxes in grid layout' }),
+  gapSize: SizeSchema.optional().meta({ ai: false, description: 'Spacing between boxes' }),
+  animate: z.enum(['expand', 'swipe', '']).optional().meta({ ai: false, description: 'Animation style for box appearance' }),
 })
 
 export type BentoItem = z.infer<typeof BentoItemSchema>
@@ -76,7 +77,7 @@ const options: InputOption[] = [
               createOption({ schema, key: 'items.0.superTitle', label: 'Super Title', input: 'InputSuperTitle' }),
               createOption({ schema, key: 'items.0.media', label: 'Inline Media', input: 'InputMedia' }),
               createOption({ schema, key: 'items.0.href', label: 'Item URL', input: 'InputSiteRoute' }),
-              createOption({ schema, key: 'items.0.action', label: 'Action Area', input: 'InputActionArea' }),
+              createOption({ schema, key: 'items.0.action.buttons', label: 'Action Area', input: 'InputActions' }),
             ],
           }),
           createOption({
@@ -170,7 +171,7 @@ export async function getUserConfig(args: { factory: CardFactory, templateId: st
         content: 'Add media or background images to create visual interest.',
         bg: {
           ...stock.getRandomByTags(['background']),
-          overlay: { opacity: 0.4 }, // Adjust overlay opacity: 0-1
+          effects: { overlay: { opacity: 0.4 } }, // Adjust overlay opacity: 0-1
         },
         verticalPosition: 'center', // Try: top, center, bottom
         horizontalPosition: 'center', // Try: left, center, right
@@ -200,7 +201,7 @@ export async function getDemoUserConfig(args: { factory: CardFactory, stock: Sto
         horizontalPosition: 'left',
         bg: {
           ...stock.getRandomByTags(['abstract', 'aspect:landscape']),
-          overlay: { opacity: 0.3 },
+          effects: { overlay: { opacity: 0.3 } },
         },
         action: {
           buttons: [
@@ -221,7 +222,7 @@ export async function getDemoUserConfig(args: { factory: CardFactory, stock: Sto
         themeMode: 'dark',
         bg: {
           ...stock.getRandomByTags(['object']),
-          overlay: { opacity: 0.4 },
+          effects: { overlay: { opacity: 0.4 } },
         },
       },
 
@@ -261,7 +262,7 @@ export async function getDemoUserConfig(args: { factory: CardFactory, stock: Sto
         themeMode: 'dark',
         bg: {
           ...stock.getRandomByTags(['technology']),
-          overlay: { opacity: 0.5 },
+          effects: { overlay: { opacity: 0.5 } },
         },
         action: {
           buttons: [
@@ -311,7 +312,7 @@ export async function getDemoUserConfig(args: { factory: CardFactory, stock: Sto
         horizontalPosition: 'left',
         bg: {
           ...stock.getRandomByTags(['abstract']),
-          overlay: { opacity: 0.4 },
+          effects: { overlay: { opacity: 0.4 } },
         },
       },
       {

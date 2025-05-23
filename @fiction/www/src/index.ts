@@ -1,4 +1,4 @@
-import type { ServiceConfig } from '@fiction/core/index.js'
+import type { MetaAppDetails, ServiceConfig } from '@fiction/core/index.js'
 import path from 'node:path'
 import { FictionAdmin } from '@fiction/admin/index.js'
 import { FictionAnalytics } from '@fiction/analytics/index.js'
@@ -25,7 +25,7 @@ import { getStripeProductConfig } from './stripeProducts'
 const cwd = safeDirname(import.meta.url, '..')
 
 // Core configuration
-function META() {
+function META(): MetaAppDetails {
   return {
     version,
     name: 'Fiction',
@@ -34,6 +34,7 @@ function META() {
     domain: 'fiction.com',
     termsUrl: 'https://docs.fiction.com/resources/terms.html',
     privacyUrl: 'https://docs.fiction.com/resources/privacy.html',
+    admins: ['arpowers@gmail.com'],
   }
 }
 
@@ -103,10 +104,6 @@ const fictionRouter = new FictionRouter({
   baseUrl: fictionEnv.meta?.url,
   routes: (fictionRouter) => {
     return [
-      new AppRoute({ name: 'buttonsDemo', path: '/demo-buttons', component: async (): Promise<any> => import('@fiction/ui/buttons/test/TestButtonsAll.vue'), noSitemap: true }),
-      new AppRoute({ name: 'chartTest', path: '/test-chart', component: async (): Promise<any> => import('@fiction/analytics/chart/test/TestChart.vue'), noSitemap: true }),
-      new AppRoute({ name: 'themeMinimal', path: '/theme-minimal/:viewId?/:itemId?', component: CardSite, props: { siteRouter: fictionRouter, themeId: 'minimal' }, noSitemap: true }),
-      new AppRoute({ name: 'testEditor', path: '/test-editor', component: async (): Promise<any> => import('@fiction/ui/prose/editor/test/TestEditor.vue'), noSitemap: true }),
       new AppRoute({ name: 'dash', path: '/app/:viewId?/:itemId?', component: CardSite, props: { siteRouter: fictionRouter, themeId: 'admin' }, noSitemap: true }),
       new AppRoute({ name: 'engine', path: '/:viewId?/:itemId?', component: CardSite, props: { siteRouter: fictionRouter, themeId: 'fiction' } }),
     ]

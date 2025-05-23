@@ -1,7 +1,6 @@
 import type { ColorThemeBright } from '@fiction/core'
 import type { Organization, User } from '@fiction/core/plugin-user'
 import type { ArchetypeKey, ImageStyleKey } from '@fiction/core/schemas/motifs'
-import { toSlug } from '@fiction/core'
 import { getArchetypesStyles, getImageStyles } from '@fiction/core/schemas/motifs'
 
 export type ProfileData = {
@@ -18,6 +17,7 @@ export type ProfileData = {
 
   goal?: string
   headline?: string
+  promise?: string
   about?: string
   interests?: string[]
   influences?: string[]
@@ -73,12 +73,14 @@ export function profileFromAccount(args: { user?: User, org?: Organization }): P
     name: org?.orgName || user?.fullName,
     handle: org?.handle || user?.handle,
     headline: org?.headline,
+    promise: org?.promise,
     about: org?.about || user?.about,
     avatar: org?.avatar || user?.avatar,
     interests: org?.interests || [],
     influences: org?.influences || [],
     linkedinHandle: org?.accounts?.linkedin || user?.accounts?.linkedin,
     needsOnboarding: org?.needsOnboarding || user?.needsOnboarding,
+    primaryColor: org?.primaryColor,
   }
 }
 
@@ -101,14 +103,16 @@ export function accountFromProfile(profile: ProfileData): {
     orgName: profile.name,
     handle: profile.handle,
     headline: profile.headline,
+    promise: profile.promise,
     about: profile.about,
-    interests: profile.interests?.map(i => toSlug(i)),
-    influences: profile.influences?.map(i => toSlug(i)),
+    interests: profile.interests,
+    influences: profile.influences,
     avatar: profile.avatar,
     needsOnboarding: profile.needsOnboarding,
     goal: profile.goal,
     promptContent: getArchetypesStyles().find(a => a.value === profile.promptContentKey)?.info || '',
     promptImage: getImageStyles().find(a => a.value === profile.promptImageKey)?.info || '',
+    primaryColor: profile.primaryColor,
   }
 
   return { userFields, orgFields }

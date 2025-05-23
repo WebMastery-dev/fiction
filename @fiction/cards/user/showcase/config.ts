@@ -2,7 +2,7 @@ import type { ActionButton } from '@fiction/core'
 import type { StandardUserConfig } from '@fiction/site/schema'
 import { PostHandlingSchema } from '@fiction/posts'
 import { createOption } from '@fiction/ui'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 
 const aspectOptions = [
   { value: 'square', label: 'Square (1:1)' },
@@ -14,16 +14,10 @@ const aspectOptions = [
 ] as const
 
 const schema = z.object({
-  posts: PostHandlingSchema.optional(),
-  aspect: z.enum(['square', 'portrait', 'landscape', 'wide', 'golden', 'cinema'])
-    .optional()
-    .describe('Control the visual impact with different image proportions'),
-  gridColsMax: z.enum(['2', '3', '4', '5'])
-    .optional()
-    .describe('Maximum columns on large screens for optimal viewing'),
-  gridColsMin: z.enum(['1', '2'])
-    .optional()
-    .describe('Minimum columns on mobile for responsive layouts'),
+  posts: PostHandlingSchema.optional().meta({ ai: false, description: 'Post filtering and display configuration' }),
+  aspect: z.enum(['square', 'portrait', 'landscape', 'wide', 'golden', 'cinema']).optional().meta({ ai: false, description: 'Control the visual impact with different image proportions' }),
+  gridColsMax: z.enum(['2', '3', '4', '5']).optional().meta({ ai: false, description: 'Maximum columns on large screens for optimal viewing' }),
+  gridColsMin: z.enum(['1', '2']).optional().meta({ ai: false, description: 'Minimum columns on mobile for responsive layouts' }),
 })
 
 export type UserConfig = z.infer<typeof schema> & StandardUserConfig

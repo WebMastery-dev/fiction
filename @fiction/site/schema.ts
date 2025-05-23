@@ -6,13 +6,13 @@ import {
   fontFamilySchema,
   HeaderLayoutSchema,
   logoSchema,
-  MediaDisplaySchema,
+  MediaSchema,
   NavListItemSchema,
   NavListSchema,
   SizeSchemaComplete,
   SuperTitleSchema,
 } from '@fiction/core'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 
 export type SizeBasic = z.infer<typeof SizeSchemaComplete>
 export const prefersColorScheme = ['light', 'dark', 'auto', ''] as const
@@ -43,10 +43,9 @@ const NavigationItemSchema = NavListItemSchema.extend({
 const NavigationSchema = z.object({
   primary: z.array(NavigationItemSchema).optional(),
   secondary: z.array(NavigationItemSchema).optional(),
-  footer: z.array(NavListSchema).optional(),
-  mobile: z.array(NavigationItemSchema).optional(),
-  utility: z.array(NavigationItemSchema).optional(),
 })
+
+export type SiteNav = z.infer<typeof NavigationSchema>
 
 // Main schema
 export const CardStandardSchema = z.object({
@@ -54,7 +53,7 @@ export const CardStandardSchema = z.object({
   description: z.string().optional(),
   fonts: fontsSchema.optional(),
   buttons: ButtonTypeSchema.optional(),
-  background: MediaDisplaySchema.optional(),
+  background: MediaSchema.optional(),
   themeColor: ColorThemeSchema.optional(),
   primaryColor: ColorThemeSchema.optional(),
   widthSize: SizeSchemaComplete.optional(),
@@ -70,7 +69,7 @@ export const CardStandardSchema = z.object({
   }).optional(),
   ai: z.object({
     prompt: z.string().optional(),
-    fields: z.record(z.object({
+    fields: z.record(z.string(), z.object({
       prompt: z.string().optional(),
       isUserEnabled: z.boolean().optional(),
     })).optional(),
@@ -84,19 +83,21 @@ export const CardOptionsWithStandardSchema = z.object({
 export type CardStandardOptions = z.infer<typeof CardStandardSchema>
 export type CardOptionsWithStandard = z.infer<typeof CardOptionsWithStandardSchema>
 
+
+
 const siteGlobalConfigSchema = z.object({
   googleAnalyticsId: z.string().optional(),
   googleTagManagerId: z.string().optional(),
-  favicon: MediaDisplaySchema.optional(),
-  icon: MediaDisplaySchema.optional(),
-  shareImage: MediaDisplaySchema.optional(),
+  favicon: MediaSchema.optional(),
+  icon: MediaSchema.optional(),
+  shareImage: MediaSchema.optional(),
   titleTemplate: z.string().optional(),
   robotsTxt: z.string().optional(),
   locale: z.string().optional(),
   timezone: z.string().optional(),
   logo: logoSchema.optional(),
   standard: CardStandardSchema.optional(),
-  navigation: NavigationSchema.optional(), // Added navigation schema
+
 })
 
 export const StandardUserConfigSchema = z.object({
@@ -116,10 +117,6 @@ export const SiteSchema = z.object({
   customDomains: z.array(z.any()).optional(),
   status: z.enum(['pending', 'active', 'inactive']).optional().default('pending'),
   userConfig: siteGlobalConfigSchema.optional(),
-  userPrivate: z.record(z.unknown()).optional(),
-  editor: z.record(z.unknown()).optional(),
-  sections: z.record(z.unknown()).optional(),
-  draft: z.record(z.unknown()).optional(),
 }).strict()
 
 export const PageSchema = z.object({

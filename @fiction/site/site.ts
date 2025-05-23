@@ -1,4 +1,4 @@
-import type { FictionRouter, FontFamily, SocialAccounts } from '@fiction/core'
+import type { EndpointResponse, FictionRouter, FontFamily, SocialAccounts } from '@fiction/core'
 import type { Contact } from '@fiction/plugins/plugin-contact/schema.js'
 import type { Card, CardTemplate } from './card.js'
 import type { FictionSites, ThemeConfig } from './index.js'
@@ -15,7 +15,6 @@ import { activeSiteFont } from './utils/fonts.js'
 import { SiteFrameTools } from './utils/frame.js'
 import { SiteHistory } from './utils/history.js'
 import { flattenCards, setLayoutOrder } from './utils/layout.js'
-import { siteLink } from './utils/manage.js'
 import { activePageIdByRoute, getPageById, getViewMap } from './utils/page.js'
 import { addNewCard, removeCard } from './utils/region.js'
 import { saveSite, scrollActiveCardIntoView, setSections, setupRouteWatcher, updateSite } from './utils/site.js'
@@ -31,13 +30,13 @@ export type EditorState = {
 
 export type SiteSettings = {
   fictionSites: FictionSites
-  siteRouter: FictionRouter
+  siteRouter?: FictionRouter
   currentPath?: vue.Ref<string> | vue.WritableComputedRef<string>
   isEditable?: boolean
   siteMode?: SiteMode
   isProd?: boolean
   isStatic?: boolean
-} & Partial<TableSiteConfig> & { themeId: string, siteId: string }
+} & Partial<TableSiteConfig> & { themeId?: string, siteId: string }
 
 export type SiteEventMap = {
   addCard: CustomEvent<{ template: CardTemplate }>
@@ -49,7 +48,7 @@ export const SITE_INJECTION_KEY = Symbol('siteRef') as vue.InjectionKey<vue.Ref<
 
 export class Site<T extends SiteSettings = SiteSettings> extends FictionObject<T> {
   fictionSites = this.settings.fictionSites
-  siteRouter = this.settings.siteRouter
+  siteRouter = this.settings.siteRouter || this.fictionSites.settings.fictionRouterSites || this.fictionSites.settings.fictionRouter
   siteMode = vue.ref(this.settings.siteMode || 'standard')
   editToggle = vue.ref(false)
   isEditable = vue.computed(() => ['editable', 'designer'].includes(this.siteMode.value) || false)
@@ -63,7 +62,7 @@ export class Site<T extends SiteSettings = SiteSettings> extends FictionObject<T
   status = vue.ref(this.settings.status)
   handle = vue.ref(this.settings.handle)
   isAnimationDisabled = vue.ref(false)
-  themeId = vue.ref(this.settings.themeId)
+  themeId = vue.ref(this.settings.themeId || 'base')
   theme = vue.computed(() => {
     const themes = this.fictionSites.themes.value
     const found = themes.find(t => t.themeId === this.themeId.value)
@@ -75,7 +74,7 @@ export class Site<T extends SiteSettings = SiteSettings> extends FictionObject<T
   userConfig = vue.ref(this.settings.userConfig || {})
   themeConfig = vue.ref<ThemeConfig>()
   fullConfig = vue.computed(() => deepMerge([this.themeConfig.value?.userConfig, this.userConfig.value]))
-
+  nav = vue.computed(() => this.settings.nav || {})
   org = vue.computed(() => deepMerge([this.themeConfig.value?.org, this.settings.org]))
 
   subDomain = vue.computed(() => {
@@ -202,6 +201,7 @@ export class Site<T extends SiteSettings = SiteSettings> extends FictionObject<T
       { shortcode: 'handle', handler: () => this.org.value?.handle || '' },
       { shortcode: 'headline', handler: () => this.org.value?.headline || '' },
       { shortcode: 'about', handler: () => this.org.value?.about || '' },
+      { shortcode: 'promise', handler: () => this.org.value?.promise || this.org.value?.headline || '' },
       { shortcode: 'avatar', handler: () => {
         return this.org.value?.avatar?.url || ''
       } },
@@ -215,7 +215,7 @@ export class Site<T extends SiteSettings = SiteSettings> extends FictionObject<T
   pages = vue.shallowRef([] as Card[])
   availableCards = vue.computed(() => flattenCards([this.currentPage.value, ...Object.values(this.sections.value)]))
   currentPath = vue.computed({
-    get: () => this.siteRouter.current.value.path,
+    get: () => this.siteRouter.current.value.fullPath,
     set: async v => this.siteRouter.push(v, { caller: 'currentPath' }),
   })
 
@@ -276,7 +276,7 @@ export class Site<T extends SiteSettings = SiteSettings> extends FictionObject<T
   saveTimeout: ReturnType<typeof setTimeout> | null = null // Store timeout reference
 
   saveUtil = new AutosaveUtility({
-    onSave: async () => this.save({ scope: 'draft' }),
+    onSave: async () => { this.save({ scope: 'draft' }) },
   })
 
   toConfig(args: { onlyKeys?: (keyof TableSiteConfig)[] | readonly (keyof TableSiteConfig)[] } = {}): { siteId: string } & Partial<TableSiteConfig> {
@@ -296,6 +296,8 @@ export class Site<T extends SiteSettings = SiteSettings> extends FictionObject<T
       subDomain: this.subDomain.value,
       isPrimary: this.isPrimary.value,
       userConfig: this.userConfig.value,
+      nav: this.nav.value,
+      handle: this.handle.value,
       pages,
       sections,
     }

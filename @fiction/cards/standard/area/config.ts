@@ -1,7 +1,6 @@
 import type { CardFactory } from '@fiction/site/cardFactory'
 import type { StandardUserConfig } from '@fiction/site/schema'
 import { deepMerge } from '@fiction/core'
-import { z } from 'zod'
 
 export type UserConfig = StandardUserConfig
 
@@ -74,7 +73,7 @@ export async function getConfig(args: { templateId: string, factory: CardFactory
       standard: {
         background: {
           ...stock.getRandomByTags(['video']),
-          overlay: { color: 'rgba(0,0,0,0.6)' },
+          effects: { overlay: { color: 'rgba(0,0,0,0.6)' } },
         },
         themeColor: 'overlay',
         primaryColor: 'cyan',
@@ -89,9 +88,11 @@ export async function getConfig(args: { templateId: string, factory: CardFactory
       standard: {
         background: {
           ...stock.getRandomByTags(['aspect:landscape']),
-          overlay: {
-            color: 'rgba(15,23,42,0.8)',
-            blendMode: 'multiply',
+          effects: {
+            overlay: {
+              color: 'rgba(15,23,42,0.8)',
+              blendMode: 'multiply',
+            },
           },
         },
         themeColor: 'overlay',
@@ -146,7 +147,6 @@ export async function getConfig(args: { templateId: string, factory: CardFactory
   } as const
 
   return {
-    schema: z.object({}),
     options: [],
     userConfig: {},
     demoPage: {

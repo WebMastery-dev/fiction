@@ -1,7 +1,7 @@
 import type { StandardUserConfig } from '@fiction/site/schema'
 import { NavListItemSchema, numberFormats } from '@fiction/core'
 import { createOption } from '@fiction/ui'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 
 export const MetricSchema = NavListItemSchema.pick({
   label: true,
@@ -12,7 +12,7 @@ export const MetricSchema = NavListItemSchema.pick({
   emphasis: true,
 }).extend({
   format: z.enum(numberFormats).optional(),
-})
+}).meta({ description: 'Metric item with label, description, value, and icon' })
 
 export type MetricItem = z.infer<typeof MetricSchema>
 

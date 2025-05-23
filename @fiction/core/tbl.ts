@@ -1,5 +1,5 @@
 import type { Col } from './plugin-db/objects.js'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 
 export const standardTable = {
   org: 'fiction_org',
@@ -30,9 +30,6 @@ type Timestamps = {
   createdAt?: string
 }
 
-/**
- * NEW
- */
 type ColTuple<T extends readonly Col<string, any>[]> = {
   [P in keyof T]: T[P] extends Col<infer X, infer Q> ? [X, Q] : never
 }[number]
@@ -45,21 +42,15 @@ export type ColType<T extends readonly Col<string, any>[]> = ColTupleToObject<Co
 
 /**
  * creates a typed schema from a list of columns
+ * Fixed: Return the inferred type directly instead of wrapping with ZodObject
  */
 export function createTableSchema<T extends readonly Col<any, any>[]>(cols: T) {
   const entries = cols.map(col => [col.key, col.sch({ z })])
   const shape = Object.fromEntries(entries)
-  // Add createdAt and updatedAt to the shape
-  const schema = z.object({
-    ...shape,
-    createdAt: z.string().optional(),
-    updatedAt: z.string().optional(),
-  }).partial()
 
-  return schema as z.ZodObject<
-    { [K in keyof ColType<T>]: z.ZodOptional<z.ZodType<ColType<T>[K]>> } & {
-      createdAt: z.ZodOptional<z.ZodString>
-      updatedAt: z.ZodOptional<z.ZodString>
-    }
-  >
+  // Add createdAt and updatedAt to the shape
+  const schema = z.object({ ...shape, createdAt: z.string().optional(), updatedAt: z.string().optional() }).partial()
+
+  // Return the schema but with proper type inference
+  return schema as z.ZodType<ColType<T>>
 }

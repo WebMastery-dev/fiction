@@ -14,13 +14,12 @@ import { FictionPlugin } from '../plugin'
 import { EnvVar, vars } from '../plugin-env'
 import { AppRoute } from '../plugin-router/index.js'
 import { FictionSitemap } from '../plugin-sitemap'
-import { initializeResetUi, isTest, safeDirname, vue } from '../utils'
+import { HooksUtil, initializeResetUi, isTest, safeDirname, vue } from '../utils'
 import ElRoot from './ElRoot.vue'
 import { FictionRender } from './plugin-render'
 
 vars.register(() => [
   new EnvVar({ name: 'FICTION_ORG_ID', isOptional: true, isPublic: true }),
-  new EnvVar({ name: 'FICTION_SITE_ID', isOptional: true, isPublic: true }),
 ])
 
 export type FictionAppSettings = {
@@ -51,10 +50,15 @@ function isConstructor(value: any, name?: string): value is () => any {
   return isValid
 }
 
+export type AppHookEvents = {
+  beforeAppMounted: (args: { entry: FictionAppEntry }) => Promise<void>
+}
+
 export class FictionApp extends FictionPlugin<FictionAppSettings> {
   isLive = this.settings.isLive ?? this.settings.fictionEnv.isProd
   viteDevServer?: vite.ViteDevServer
   isTest = this.settings.isTest || isTest()
+  hooks = new HooksUtil<AppHookEvents>()
   rootComponent = this.settings.rootComponent || ElRoot
   fictionBuild?: FictionBuild
   fictionRender?: FictionRender
@@ -97,36 +101,7 @@ export class FictionApp extends FictionPlugin<FictionAppSettings> {
     // add testing routes
     this.settings.fictionRouter.update([new AppRoute({ name: 'renderTest', path: '/render-test', component: async (): Promise<any> => import('./test/TestRunVars.vue') })])
 
-    this.addSchema()
-
     this.fictionEnv?.events.on('shutdown', async () => this.close())
-  }
-
-  addSchema() {
-    const routes = this.settings.fictionRouter.routes.value || []
-    if (this.settings.fictionEnv) {
-      this.settings.fictionEnv.addHook({
-        hook: 'staticSchema',
-        caller: 'appConfig',
-        context: 'cli',
-        callback: async (existing) => {
-          const routeKeys = routes.map(_ => _.name).filter(Boolean).sort()
-
-          return { ...existing, routes: { enum: routeKeys, type: 'string' }, menus: { enum: [''], type: 'string' } }
-        },
-      })
-
-      this.settings.fictionEnv.addHook({
-        hook: 'staticConfig',
-        caller: 'appConfig',
-        context: 'cli',
-        callback: (
-          schema: Record<string, unknown>,
-        ): Record<string, unknown> => {
-          return { ...schema, routes: routes.map(ep => ({ key: ep.name, path: ep.path })) }
-        },
-      })
-    }
   }
 
   tailwindConfig = this.settings.tailwindConfig ?? []
@@ -198,12 +173,14 @@ export class FictionApp extends FictionPlugin<FictionAppSettings> {
     const entry = await this.createVueApp({ runVars, service, initialState })
 
     if (typeof window !== 'undefined' && !this.settings.fictionEnv.isSSR.value) {
-      await this.settings.fictionEnv.runHooks('beforeAppMounted', entry)
+      await this.hooks.run('beforeAppMounted', { entry })
 
       const mountEl = args.mountEl || document.querySelector(selector)
 
-      if (!mountEl)
+      if (!mountEl) {
+        this.log.error(`mountEl not found: ${selector}`, { data: { html: document.documentElement.innerHTML } })
         throw new Error(`mountEl not found: ${selector}`)
+      }
 
       initializeResetUi({ fictionRouter, fictionEnv }).catch(console.error)
 

@@ -1,10 +1,10 @@
 import type stripe from 'stripe'
-import type { MediaObject, ProgressStatus } from '../schemas/schemas.js'
+import type { MediaObject, ProgressStatus } from '../schemas/index.js'
 import type { ColType } from '../tbl.js'
 import type { UserCapability } from '../utils/priv.js'
 import type { membersColumns, orgColumns, userColumns } from './schema.js'
-import { z } from 'zod'
-import { MediaBasicSchema } from '../schemas/schemas.js'
+import { z } from 'zod/v4'
+import { MediaSchema } from '../schemas/index.js'
 
 export const EntityStatusEnum = z.enum(['active', 'inactive', 'suspended', 'pending'])
 export const UserRoleEnum = z.enum([
@@ -26,7 +26,7 @@ export const GenderEnum = z.enum(['male', 'female', 'other'])
 export const EmailSenderSchema = z.object({
   senderName: z.string().optional(),
   senderEmail: z.string().optional(),
-  avatar: MediaBasicSchema.optional(),
+  avatar: MediaSchema.optional(),
   companyName: z.string().optional(),
   websiteUrl: z.string().optional(),
   streetAddress: z.string().optional(),
@@ -47,7 +47,6 @@ export interface OnboardingItem {
   key: string
   status: ProgressStatus
   completedAt?: string
-  responses: { question: string, answer: string }[]
   data?: Record<string, unknown>
 }
 
@@ -171,54 +170,10 @@ export interface OrganizationMembership {
   userId: string
   memberAccess: MemberAccess
   memberStatus: MemberStatus
+  tags?: string[]
+  invitedById?: string
 }
 
 export const orgFields = ['orgId', 'orgName']
 
 export type TokenFields = Partial<User> & { userId: string, iat: number }
-
-/**
- * Publicly accessible user information
- */
-// export interface PublicUser {
-//   userId: string
-//   email: string
-//   createdAt?: string
-//   updatedAt?: string
-//   avatar?: string
-//   status?: string
-//   username?: string
-//   firstName?: string
-//   lastName?: string
-//   emailVerified?: boolean
-//   role?: UserRoles
-//   profile?: Record<string, any>
-//   settings?: Record<string, any>
-//   lastSeenAt?: string | number | Date
-// }
-/**
- * Information regarding a user profile (e.g. birthday, cover, tags)
- */
-// export interface UserMeta {
-//   calendarUrl?: string
-//   birthday?: Date | string
-//   gender?: 'male' | 'female' | 'other'
-//   about?: string
-//   tag?: string[]
-//   category?: string[]
-//   site?: string
-//   github?: string
-//   githubFollowers?: number
-//   twitter?: string
-//   twitterFollowers?: number
-//   linkedin?: string
-//   facebook?: string
-//   workName?: string
-//   workSeniority?: string
-//   workRole?: string
-//   workRoleSub?: string
-//   workTitle?: string
-//   workDomain?: string
-//   bio?: string
-//   location?: string
-// }

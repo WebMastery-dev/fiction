@@ -49,13 +49,7 @@ export async function requestManageSite(args: RequestManageSiteParams) {
 
   let scope: 'publish' | 'draft' = routeScope === 'draft' ? 'draft' : 'publish'
 
-  if (_action === 'create') {
-    const { fields } = args
-    const { themeId } = fields || {}
-    if (!themeId)
-      throw new Error('no themeId')
-  }
-  else if (['update', 'delete', 'retrieve'].includes(_action)) {
+  if (['update', 'delete', 'retrieve'].includes(_action)) {
     const { _action, where } = args
     if (!where || !Object.keys(where).length) {
       logger.error(`REQUEST SITE WHERE -> no siteId or subDomain ${_action}`)
@@ -101,7 +95,6 @@ export async function loadSiteById(args: { where: WhereSite, siteRouter: Fiction
 }
 
 export async function loadSiteFromTheme(args: {
-  fictionOrgId?: string
   themeId: string
   siteRouter: FictionRouter
   fictionSites: FictionSites
@@ -112,7 +105,7 @@ export async function loadSiteFromTheme(args: {
   const { themeId, siteRouter, fictionSites, siteMode, caller } = args
   const availableThemes = fictionSites.themes.value
   const theme = availableThemes.find(t => t.themeId === themeId)
-  const orgId = args.fictionOrgId || fictionSites.settings.fictionOrgId
+  const orgId = fictionSites.fictionEnv.meta.systemOrgId
   const fictionUser = fictionSites.settings.fictionUser
 
   if (!orgId) {
@@ -156,7 +149,7 @@ export async function loadSiteFromTheme(args: {
 export async function loadSiteFromCard(args: { cardId: string, siteRouter: FictionRouter, fictionSites: FictionSites, siteMode: SiteMode, caller?: string }): Promise<Site> {
   const { cardId } = args
   const normCardId = toCamel(cardId)
-  const site = await loadSiteFromTheme({ ...args, themeId: 'minimal' })
+  const site = await loadSiteFromTheme({ ...args, themeId: 'base' })
 
   const { createDemoPage } = await import('./utils/demo.js')
 

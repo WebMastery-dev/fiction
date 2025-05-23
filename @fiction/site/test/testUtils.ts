@@ -5,18 +5,20 @@ import { FictionAdmin } from '@fiction/admin'
 import { FictionAnalytics } from '@fiction/analytics/index.js'
 import FSite from '@fiction/cards/CardSite.vue'
 import { FictionCards } from '@fiction/cards/index.js'
-import { AppRoute, FictionApp, FictionAws, FictionMedia, FictionRouter, getEnvVars, randomBetween, shortId } from '@fiction/core'
+import { AppRoute, FictionApp, FictionAws, FictionMedia, FictionRouter, getEnvVars, randomBetween, shortId, waitFor } from '@fiction/core'
 import { runServicesSetup } from '@fiction/core/plugin-env/entry'
 import { testEnvFile } from '@fiction/core/test-utils'
 import { createTestUtils } from '@fiction/core/test-utils/init'
 import { createUiTestingKit } from '@fiction/core/test-utils/kit'
+import { FictionOnboard } from '@fiction/onboard/index.js'
 import { FictionAi } from '@fiction/plugin-ai'
 import { FictionContact } from '@fiction/plugin-contact'
 import { FictionTransactions } from '@fiction/plugin-transactions'
+import { FictionPosts } from '@fiction/posts/index.js'
 import * as minimalTheme from '@fiction/theme-minimal'
+
 import { FictionSites } from '../index.js'
 import { Site } from '../site.js'
-
 import * as testTheme from './test-theme'
 import { setup } from './testUtils.main.js'
 
@@ -26,11 +28,13 @@ export type SiteTestUtils = TestUtils & {
   fictionRouterSites: FictionRouter
   fictionAppSites: FictionApp
   fictionMedia: FictionMedia
+  fictionPosts: FictionPosts
   fictionAws: FictionAws
   fictionAi: FictionAi
   fictionTransactions: FictionTransactions
   fictionContact: FictionContact
   fictionAdmin: FictionAdmin
+  fictionOnboard: FictionOnboard
   fictionAnalytics: FictionAnalytics
   runApp: (args: { context: 'app' | 'node', isProd?: boolean }) => Promise<void>
   close: () => Promise<void>
@@ -88,6 +92,8 @@ export async function createSiteTestUtils(args: {
   out.fictionAdmin = new FictionAdmin({ ...(out as SiteTestUtils), proxycurlApiKey })
   out.fictionContact = new FictionContact({ ...(out as SiteTestUtils) })
 
+  out.fictionPosts = new FictionPosts({ ...(out as SiteTestUtils) })
+
   const themes = async () => Promise.all([
     minimalTheme.theme,
     testTheme.theme,
@@ -96,6 +102,9 @@ export async function createSiteTestUtils(args: {
 
   out.fictionSites = new FictionSites({ ...(out as SiteTestUtils), themes })
   out.fictionCards = new FictionCards({ ...out, fictionSites: out.fictionSites, fictionRouterSites: out.fictionRouterSites })
+
+  out.fictionOnboard = new FictionOnboard({ ...(out as SiteTestUtils), proxycurlApiKey: v.proxycurlApiKey })
+
   await runServicesSetup(out, { context: 'test' })
 
   out.fictionEnv.log.info(`Site Test Utils Created (${context})`)
@@ -127,6 +136,7 @@ export async function createSiteTestUtils(args: {
   }
 
   out.close = async () => {
+    await waitFor(100)
     await out.fictionAnalytics?.close()
     await testUtils.close()
   }

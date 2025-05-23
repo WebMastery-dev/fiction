@@ -1,4 +1,5 @@
-import type { z } from 'zod'
+import type { z } from 'zod/v4'
+
 /**
  * Get object paths with support for deeper nesting levels
  * Handles array indices and nested objects within arrays
@@ -29,13 +30,13 @@ type DecrementDepth<D extends number> =
  * Type for schema paths that supports deeper nesting and array paths
  * while still preventing circular references
  */
-export type SchemaFields<T extends z.ZodObject<any>> =
+export type SchemaFields<T extends z.ZodType<any>> =
   SchemaPathsWithDepth<z.infer<T>> | '*'
 
 /**
  * Type helper to validate paths against a schema
  */
-export function pathCheck<T extends z.ZodObject<any>>(
+export function pathCheck<T extends z.ZodType<any>>(
   path: SchemaFields<T>,
   _schema?: T,
 ): SchemaFields<T> {

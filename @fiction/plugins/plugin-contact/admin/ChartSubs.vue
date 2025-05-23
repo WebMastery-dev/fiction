@@ -1,17 +1,15 @@
 <script lang="ts" setup>
-import type { FictionContact } from '..'
-import WidgetWrap from '@fiction/admin/dashboard/WidgetWrap.vue'
+import type { WidgetConfig } from '@fiction/admin/widgets'
+import WidgetWrap from '@fiction/admin/widgets/WidgetWrap.vue'
 import DateChart from '@fiction/analytics/chart/DateChart.vue'
 
-type SubscriberWidget = FictionContact['widgets']['subscribers']
-
 const { widget } = defineProps<{
-  widget: SubscriberWidget
+  widget: WidgetConfig
 }>()
 </script>
 
 <template>
-  <WidgetWrap :widget>
-    <DateChart :title="widget.settings.title || 'No Title'" :data="widget.query?.dataRef.value" :value-key="widget.settings.valueKey" />
+  <WidgetWrap title="Subscribers">
+    <DateChart :title="widget.title || 'No Title'" :data="widget.query?.dataRef?.value" :value-key="widget.valueKey" />
   </WidgetWrap>
 </template>

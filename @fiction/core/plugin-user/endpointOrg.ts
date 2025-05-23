@@ -1,11 +1,13 @@
 import type { Knex } from 'knex'
+import type { table } from 'node:console'
 import type { EndpointResponse } from '../types/index.js'
-import type { EndpointManageAction, EndpointMeta } from '../utils/endpoint.js'
+import type { EndpointMeta } from '../utils/endpoint.js'
 import type { FictionUser, OrganizationMember, UserPluginSettings } from './index.js'
-import type { MemberAccess, MemberStatus, Organization, OrganizationMembership, User } from './types.js'
+import type { MemberAccess, Organization, OrganizationMembership, User } from './types.js'
 import { Query } from '../query.js'
 import { standardTable as t } from '../tbl.js'
 import { abort } from '../utils/error.js'
+import { ensureUniqueHandle } from '../utils/handle.js'
 import { objectId } from '../utils/id.js'
 import { gravatarUrlSync } from '../utils/url.js'
 
@@ -131,61 +133,118 @@ export class QueryOrganizationsByUserId extends QueryOrganization {
   }
 }
 
+export type WhereMember = { userId: string }
+
+export type ManageMemberRelationParams =
+  | { _action: 'create', orgId: string, fields: Partial<OrganizationMembership> }
+  | { _action: 'update', orgId: string, where: WhereMember, fields: Partial<OrganizationMembership> }
+  | { _action: 'delete', orgId: string, where: WhereMember }
+  | { _action: 'list', orgId: string, limit?: number, offset?: number }
+
 export class QueryManageMemberRelation extends OrgQuery {
   async run(
-    params: {
-      _action: EndpointManageAction
-      memberId: string
-      orgId: string
-      memberAccess?: MemberAccess
-      memberStatus?: MemberStatus
-      invitedById?: string
-      tags?: string[]
-    },
+    params: ManageMemberRelationParams,
     meta: EndpointMeta,
-  ): Promise<EndpointResponse<OrganizationMembership>> {
+  ): Promise<EndpointResponse<OrganizationMembership[]>> {
     if (!this.settings.fictionUser)
       throw abort('no user service')
     if (!meta.bearer && !meta.server)
       throw abort('auth required')
-    const { memberId, orgId, _action, memberAccess, memberStatus, invitedById, tags } = params
 
+    switch (params._action) {
+      case 'create':
+        return this.createMemberRelation(params, meta)
+      case 'update':
+        return this.updateMemberRelation(params, meta)
+      case 'delete':
+        return this.deleteMemberRelation(params, meta)
+      case 'list':
+        return this.listMemberRelations(params, meta)
+      default:
+        throw abort('Invalid action')
+    }
+  }
+
+  private async createMemberRelation(params: ManageMemberRelationParams & { _action: 'create' }, meta: EndpointMeta): Promise<EndpointResponse<OrganizationMembership[]>> {
+    const { orgId, fields } = params
     const db = this.db()
 
-    let relation: OrganizationMembership | undefined
-    let message = ''
-    if (_action === 'delete') {
-      ;[relation] = await db
-        .delete()
-        .from(t.member)
-        .where({ userId: memberId, orgId })
-        .limit(1)
-        .returning<OrganizationMembership[]>('*')
+    const prepped = this.settings.fictionDb.prep({ type: meta.server ? 'internal' : 'insert', fields, meta, table: t.member })
 
-      message = 'member removed'
-    }
-    else if (_action === 'create' || _action === 'update') {
-      // Add relation
-      ;[relation] = await db
-        .insert({ userId: memberId, orgId, memberAccess, memberStatus, invitedById, tags })
-        .onConflict(['user_id', 'org_id'])
-        .merge()
-        .into(t.member)
-        .returning<OrganizationMembership[]>('*')
-
-      message = 'member updated'
-    }
+    const [relation] = await db
+      .insert({ orgId, ...prepped })
+      .onConflict(['user_id', 'org_id'])
+      .merge()
+      .into(t.member)
+      .returning<OrganizationMembership[]>('*')
 
     const user = await this.returnUser(meta)
 
-    return { status: 'success', data: relation, user, message }
+    return { status: 'success', data: [relation], user, message: 'member added' }
+  }
+
+  private async updateMemberRelation(params: ManageMemberRelationParams & { _action: 'update' }, meta: EndpointMeta): Promise<EndpointResponse<OrganizationMembership[]>> {
+    const { where, fields, orgId } = params
+    const db = this.db()
+
+    const updatedFields = this.settings.fictionDb.prep({ type: meta.server ? 'internal' : 'update', fields, meta, table: t.member })
+
+    const [relation] = await db
+      .update(updatedFields)
+      .where({ userId: where.userId, orgId })
+      .into(t.member)
+      .returning<OrganizationMembership[]>('*')
+
+    const user = await this.returnUser(meta)
+
+    return { status: 'success', data: [relation], user, message: 'member updated' }
+  }
+
+  private async deleteMemberRelation(params: ManageMemberRelationParams & { _action: 'delete' }, meta: EndpointMeta): Promise<EndpointResponse<OrganizationMembership[]>> {
+    const { where, orgId } = params
+    const db = this.db()
+
+    const [relation] = await db
+      .delete()
+      .from(t.member)
+      .where({ userId: where.userId, orgId })
+      .limit(1)
+      .returning<OrganizationMembership[]>('*')
+
+    const user = await this.returnUser(meta)
+
+    return { status: 'success', data: [relation], user, message: 'member removed' }
+  }
+
+  private async listMemberRelations(params: ManageMemberRelationParams & { _action: 'list' }, meta: EndpointMeta): Promise<EndpointResponse<OrganizationMembership[]>> {
+    const { orgId, limit = 100, offset = 0 } = params
+    const db = this.db()
+
+    // Join with user table to get member details
+    const relations = await db
+      .select([
+        `${t.member}.*`,
+        `${t.user}.email`,
+        `${t.user}.full_name`,
+        `${t.user}.avatar`,
+      ])
+      .from(t.member)
+      .leftJoin(t.user, `${t.user}.user_id`, `${t.member}.user_id`)
+      .where({ [`${t.member}.org_id`]: orgId })
+      .orderBy(`${t.member}.created_at`, 'desc')
+      .limit(limit)
+      .offset(offset)
+
+    const user = await this.returnUser(meta)
+
+    return { status: 'success', data: relations, user }
   }
 }
 
 export type WhereOrg = { orgId: string } | { handle: string }
 
 export type ManageOrganizationParams =
-  | { _action: 'create', fields: Partial<Organization>, userId: string, withDefaults?: boolean }
+  | { _action: 'create', fields: Partial<Organization>, userId?: string, withDefaults?: boolean }
   | { _action: 'update', where: WhereOrg, fields: Partial<Organization> }
   | { _action: 'delete', where: WhereOrg }
   | { _action: 'read', where: WhereOrg }
@@ -240,24 +299,40 @@ export class QueryManageOrganization extends OrgQuery {
 
     const createFields = this.settings.fictionDb.prep({ type: meta.server ? 'internal' : 'insert', fields, meta, table: t.org })
 
-    const [responseOrg] = await this.db()
-      .insert({
-        orgId: orgId || objectId({ prefix: 'org' }),
-        orgName: orgName || defaultName,
-        createdByUserId: fields.createdByUserId || userId,
-        ...createFields,
-      })
-      .into(t.org)
-      .onConflict('org_id')
-      .ignore()
-      .returning<Organization[]>('*')
+    let responseOrg: Organization | undefined
+    const [existingOrg] = await this.db()
+      .select('*')
+      .from(t.org)
+      .where({ org_id: orgId || objectId({ prefix: 'org' }) })
+      .limit(1)
 
-    if (!responseOrg?.orgId)
-      throw new Error('Organization creation failed')
+    if (existingOrg) {
+      responseOrg = existingOrg
+    }
+    else {
+      if (createFields.handle) {
+        createFields.handle = await ensureUniqueHandle({ db: this.db(), table: t.org, handle: createFields.handle, idColumn: 'orgId' })
+      }
 
-    await this.settings.fictionUser.hooks.run('newOrg', { org: responseOrg, userId, withDefaults })
+      const [newOrg] = await this.db()
+        .insert({
+          orgId: orgId || objectId({ prefix: 'org' }),
+          orgName: orgName || defaultName,
+          ...createFields,
+        })
+        .into(t.org)
+        .returning<Organization[]>('*')
 
-    await this.manageMemberRelation({ userId, orgId: responseOrg.orgId, accessType: 'owner' }, { server: true, ...meta, caller: 'orgCreateMemberRelationCall' })
+      responseOrg = newOrg
+
+      if (!responseOrg?.orgId)
+        throw new Error('Organization creation failed')
+
+      await this.settings.fictionUser.hooks.run('newOrg', { org: responseOrg, userId, withDefaults })
+
+      if (userId)
+        await this.manageMemberRelation({ userId, orgId: responseOrg.orgId, accessType: 'owner' }, { server: true, ...meta, caller: 'orgCreateMemberRelationCall' })
+    }
 
     if (!responseOrg)
       throw new Error('Organization creation failed')
@@ -275,6 +350,10 @@ export class QueryManageOrganization extends OrgQuery {
       meta,
       table: t.org,
     })
+
+    if (updatedFields.handle && 'orgId' in where) {
+      updatedFields.handle = await ensureUniqueHandle({ db: this.db(), table: t.org, handle: updatedFields.handle, excludeId: where.orgId, idColumn: 'orgId' })
+    }
 
     this.log.debug('updateOrganization', { data: { where, updatedFields, fields } })
 
@@ -321,11 +400,13 @@ export class QueryManageOrganization extends OrgQuery {
     const { userId, orgId, accessType = 'owner' } = args
     return this.settings.fictionUser.queries.ManageMemberRelation.serve(
       {
-        memberId: userId,
-        orgId,
-        memberAccess: accessType,
-        memberStatus: 'active',
         _action: 'create',
+        orgId,
+        fields: {
+          userId,
+          memberAccess: accessType,
+          memberStatus: 'active',
+        },
       },
       meta,
     )
