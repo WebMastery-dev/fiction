@@ -8,7 +8,7 @@ import type { FictionContact } from '@fiction/plugins/plugin-contact/index.js'
 import type { Site } from './site.js'
 import type { CardConfigPortable, TableSiteConfig } from './tables.js'
 import { initializeClientTag } from '@fiction/analytics/tag/entry.js'
-import { cardConfig } from '@fiction/cards/index.js'
+import { cardConfig, cardConfigCustom } from '@fiction/cards/index.js'
 import { FictionPlugin, getAnonymousId, HooksUtil, isNode, safeDirname, vue } from '@fiction/core'
 import { EnvVar, vars } from '@fiction/core/plugin-env'
 import { cardTemplate } from './card.js'
@@ -106,6 +106,21 @@ export class FictionSites extends FictionPlugin<SitesPluginSettings> {
     return this.fictionEnv.isProd.value ? `https://${hostname}` : `http://${hostname}:${port}`
   }
 
+  getUrl(args?: { subDomain?: string, path?: string, scope?: 'draft' | 'publish' }) {
+    const { subDomain, path = '', scope } = args || {}
+    const origin = this.getOrigin({ subDomain })
+    const url = new URL(path, origin)
+
+    if (scope === 'draft') {
+      url.searchParams.set('scope', 'draft')
+    }
+
+    // remove pageCardId from the URL if it exists
+    url.searchParams.delete('_pageCardId')
+
+    return url.toString()
+  }
+
   addStructureFile() {
     this.fictionEnv.generators.push(async () => {
       const themes = await this.settings.themes()
@@ -129,12 +144,12 @@ export class FictionSites extends FictionPlugin<SitesPluginSettings> {
       key: 'sites',
       getTemplates: async () => getTemplates(),
       getPages: async () => [
-        cardConfig<SiteAdminTemplates>({
+        cardConfigCustom<SiteAdminTemplates>({
           templateId: 'dash',
           slug: 'sites',
           title: 'Manage Websites',
           cards: [
-            cardConfig<SiteAdminTemplates>({ templateId: 'tplManageSite' }),
+            cardConfigCustom<SiteAdminTemplates>({ templateId: 'tplManageSite' }),
           ],
           userConfig: {
             isNavItem: false,
@@ -142,13 +157,13 @@ export class FictionSites extends FictionPlugin<SitesPluginSettings> {
             navIconAlt: 'i-tabler-browser-plus',
           },
         }),
-        cardConfig<SiteAdminTemplates>({
+        cardConfigCustom<SiteAdminTemplates>({
           templateId: 'dash',
           slug: 'edit-site',
-          title: 'Website',
+          title: 'Edit Website',
           description: 'Customize and configure your website settings',
           cards: [
-            cardConfig<SiteAdminTemplates>({
+            cardConfigCustom<SiteAdminTemplates>({
               templateId: 'tplSiteEditor',
               userConfig: { standard: { spaceSize: 'none' as const } },
             }),
@@ -190,17 +205,6 @@ export class FictionSites extends FictionPlugin<SitesPluginSettings> {
 
     this.themes.value = [defaultTheme, baseTheme, ...addedThemes]
   }
-
-  getQueryItemPreviewPath = vue.computed(() => {
-    const current = this.settings.fictionRouter.current.value
-    const q = { ...current.query, ...current.params } as Record<string, string>
-    const { selectorType, selectorId, siteId, subDomain, themeId = q.theme, cardId = q.card } = q
-
-    const finalSelectorType = selectorType || (siteId ? 'site' : subDomain ? 'domain' : themeId ? 'theme' : cardId ? 'card' : 'none')
-    const finalSelectorId = selectorId || siteId || subDomain || themeId || cardId || 'none'
-
-    return `${this.previewRoute}/${finalSelectorType}/${finalSelectorId}`
-  })
 
   cleanup() {
     this.themes.value = []

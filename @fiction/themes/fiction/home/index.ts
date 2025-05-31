@@ -16,16 +16,17 @@ export async function getHomePage(args: { factory: CardFactory, stock: StockMedi
     slug: 'home',
     title: 'Home',
     isHome: true,
+    nav: 'show',
+    priority: 50,
     userConfig: {
       standard: {
-        title: 'Create Your Ideal Digital Self',
+        title: 'Your Digital Self in 3 Minutes',
         description: 'Create a personal brand that displays your ideal digital self. Build an AI-enhanced personal brand and professional network with Fiction.',
       },
     },
     cards: [
       cardConfig({
         templateId: 'cardPageAreaV1',
-        userConfig: { },
         cards: [
           cardConfig({
             templateId: 'cardHeroV1',
@@ -33,26 +34,20 @@ export async function getHomePage(args: { factory: CardFactory, stock: StockMedi
               items: [
                 {
                   superTitle: {
-                    text: 'Join over 2000+ leaders',
-                    icon: { class: 'i-tabler-rocket' },
+                    text: 'Great for Link-in-Bio',
+                    icon: { class: 'i-tabler-trending-up' },
                   },
-                  title: `The storytelling platform [@text_effect type=squiggle]for leaders[/@text_effect].`,
-                  subTitle: `Fiction is the simplest way to tell your story, show your work, and build your authority.`,
+                  title: `Your Personal Website in Under [@text_effect type=line]3 Minutes[/@text_effect].`,
+                  subTitle: `The simplest way to create a portfolio, newsletter, and more. Built for the next-generation of leaders.`,
 
                   action: {
                     buttons: [
                       {
                         label: 'Create Account',
-                        href: '/app/auth/register?_reload=1',
+                        href: '/app/auth?_reload=1',
                         theme: 'primary',
                         design: 'solid',
                         iconAfter: 'i-tabler-arrow-big-right-lines',
-                      },
-                      {
-                        label: 'Why Fiction?',
-                        href: '/tour',
-                        theme: 'default',
-                        design: 'solid',
                       },
                     ],
                   },
@@ -165,7 +160,7 @@ export async function getHomePage(args: { factory: CardFactory, stock: StockMedi
                   rows: 3,
                   superTitle: {
                     icon: { class: 'i-tabler-rocket' },
-                    text: 'Personal Branding Made Easy',
+                    text: 'AI-Optimize Your Personal Brand',
                   },
                   title: 'Create Your Digital Self',
                   content: 'Use Fiction to tell your story, express your expertise, and build your network.',
@@ -174,9 +169,10 @@ export async function getHomePage(args: { factory: CardFactory, stock: StockMedi
                   verticalPosition: 'bottom',
                   horizontalPosition: 'left',
                   bg: {
+                    format: 'video',
                     url: 'https://res.cloudinary.com/fiction-com-inc/video/upload/f_auto,q_auto/v1733965053/replicate-prediction-wtfb2100xxrj00ckq1cb7s94hg_rhvr5g.mp4',
-                    overlay: { opacity: 0.3 },
-                    videoControls: {
+                    effects: { overlay: { opacity: 0.3 } },
+                    video: {
                       freeze: { playOnHover: true },
                     },
                   },
@@ -190,14 +186,6 @@ export async function getHomePage(args: { factory: CardFactory, stock: StockMedi
                         design: 'solid',
                         size: 'xl',
                       },
-                      {
-                        label: 'Learn More',
-                        href: '/tour',
-                        theme: 'overlay',
-                        icon: 'i-tabler-rocket',
-                        design: 'outline',
-                        size: 'xl',
-                      },
                     ],
                   },
                 },
@@ -208,13 +196,13 @@ export async function getHomePage(args: { factory: CardFactory, stock: StockMedi
                     icon: { class: 'i-tabler-rocket' },
                     text: 'Homebase',
                   },
-                  title: 'Your Personal Website',
+                  title: 'Your Website',
                   content: 'A stunning personal website with effortless customization.',
                   theme: 'orange',
                   themeMode: 'dark',
                   verticalPosition: 'bottom',
                   horizontalPosition: 'left',
-                  bg: { ...stock.getAssetBySlug('whvmql'), overlay: { opacity: 0.3 } },
+                  bg: { ...stock.getAssetBySlug('whvmql'), effects: { overlay: { opacity: 0.3 } } },
                 },
                 {
                   cols: 4,
@@ -223,13 +211,13 @@ export async function getHomePage(args: { factory: CardFactory, stock: StockMedi
                     icon: { class: 'i-tabler-mail' },
                     text: 'Inbox',
                   },
-                  title: 'Your Professional Newsletter',
+                  title: 'Your Newsletter',
                   content: 'Capture your audience, then send them a newsletter.',
                   theme: 'blue',
                   themeMode: 'dark',
                   verticalPosition: 'bottom',
                   horizontalPosition: 'left',
-                  bg: { ...stock.getAssetBySlug('dvyiy3'), overlay: { opacity: 0.3 } },
+                  bg: { ...stock.getAssetBySlug('dvyiy3'), effects: { overlay: { opacity: 0.3 } } },
 
                 },
                 {
@@ -239,13 +227,13 @@ export async function getHomePage(args: { factory: CardFactory, stock: StockMedi
                     icon: { class: 'i-tabler-bolt' },
                     text: 'Content',
                   },
-                  title: 'A Home for Your Ideas',
+                  title: 'Your Ideas',
                   content: 'Put all your content in one place, syndicate it elsewhere.',
                   theme: 'green',
                   themeMode: 'dark',
                   verticalPosition: 'bottom',
                   horizontalPosition: 'left',
-                  bg: { ...stock.getAssetBySlug('aratfe'), overlay: { opacity: 0.3 } },
+                  bg: { ...stock.getAssetBySlug('aratfe'), effects: { overlay: { opacity: 0.3 } } },
                 },
               ],
             },

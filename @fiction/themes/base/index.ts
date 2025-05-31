@@ -1,5 +1,4 @@
-import { cardConfig } from '@fiction/cards'
-import { getCardTemplates } from '@fiction/cards/index.js'
+import { cardConfig, getCardTemplates } from '@fiction/cards'
 import { safeDirname } from '@fiction/core'
 import { Theme } from '@fiction/site/theme.js'
 import { getPageTemplates } from './pages/index.js'
@@ -20,7 +19,7 @@ export const theme = new Theme({
 
   isPublic: true,
   getTemplates: () => getCardTemplates({ caller: 'baseTheme' }),
-  getPageTemplates: () => getPageTemplates(),
+  getPageTemplates,
   getConfig: async () => {
     return {
       pages: [
@@ -28,6 +27,7 @@ export const theme = new Theme({
           slug: 'home',
           isHome: true,
           nav: 'hide',
+          templateId: 'cardPageWrapV1',
           cards: [
             cardConfig({
               templateId: 'cardBlogV1',

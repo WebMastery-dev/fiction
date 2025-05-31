@@ -132,16 +132,7 @@ export async function loadSiteFromTheme(args: {
     throw new Error(msg)
   }
 
-  const site = await theme.toSite({
-    fictionSites,
-    subDomain,
-    siteId,
-    orgId,
-    siteRouter,
-    siteMode,
-    isStatic: true,
-    org,
-  })
+  const site = await theme.toSite({ fictionSites, subDomain, siteId, orgId, siteRouter, siteMode, isStatic: true, org })
 
   return site
 }
@@ -391,7 +382,7 @@ export async function loadSitemap(args: { mode: 'static' | 'dynamic', runVars?: 
     const routes = fictionRouter.routes.value
     const routesWithThemeId = routes.filter(r => r.settings.props?.themeId && !r.settings.noSitemap).map((r) => {
       const basePath = r.settings.path.split('/:viewId')[0]
-      const out = { basePath: basePath || '/', themeId: r.settings.props.themeId }
+      const out = { basePath: basePath || '/', themeId: r.settings.props?.themeId }
 
       return out
     })

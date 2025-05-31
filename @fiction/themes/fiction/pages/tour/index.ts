@@ -2,16 +2,12 @@ import type { CardFactory } from '@fiction/site/cardFactory'
 
 import type { StockMedia } from '@fiction/ui/stock/index.js'
 import { cardConfig } from '@fiction/cards'
-import ImageAi from './img/ai.png'
 import ImageAudience from './img/audience.png'
-import ImageFigMoney from './img/fig-money-alt-1.svg'
-import ImageSubscribe from './img/fig-subscribe-alt-1.svg'
-import ImageManSmiling from './img/man-smiling.png'
+import ImageInvisible from './img/invisible.png'
 import ImageMeeting from './img/meeting.png'
 import PersonBrene from './img/person-brene.webp'
 import PersonFerris from './img/person-ferris.webp'
 import PersonSimon from './img/person-simon.jpg'
-import ImageWebsite from './img/website.svg'
 
 export async function getTourPage(args: { factory: CardFactory, stock: StockMedia }) {
   return cardConfig({
@@ -29,17 +25,17 @@ export async function getTourPage(args: { factory: CardFactory, stock: StockMedi
             userConfig: {
               items: [{
                 superTitle: {
-                  text: 'Your Digital Self',
-                  theme: 'green',
-                  icon: { class: 'i-tabler-arrow-up-right' },
+                  text: 'They\'re Already Judging',
+                  theme: 'red',
+                  icon: { class: 'i-tabler-eye' },
                 },
-                title: `Most People [@text_effect type=scribble]Secretly[/@text_effect] Research You!`,
-                subTitle: `Over 80% of people research you online before meeting with you. Fiction helps set your first impression.`,
+                title: `They Looked You Up [@text_effect type=scribble]Before[/@text_effect] Coffee`,
+                subTitle: `That investor. That client. That date. They all did the same thing: searched your name. What did they find? Fiction controls that moment.`,
 
                 action: {
                   buttons: [
                     {
-                      label: 'Get Started',
+                      label: 'Own Your Story',
                       href: '/app/auth/register?_reload=1',
                       theme: 'primary',
                       design: 'solid',
@@ -58,52 +54,41 @@ export async function getTourPage(args: { factory: CardFactory, stock: StockMedi
                 {
                   layout: 'right',
                   superTitle: {
-                    icon: { iconId: 'browser' },
-                    text: 'Own the Spotlight',
+                    icon: { iconId: 'ghost' },
+                    text: 'Presence',
                     theme: 'orange',
                   },
-                  title: `Like a Website, But Better`,
-                  subTitle: `Want a website but don't want the complexity? Fiction's AI creates a stunning, personalized site that showcases your expertise.`,
-                  media: { url: ImageManSmiling },
-                  overlays: [{ media: { url: ImageWebsite }, widthPercent: 50 }],
+                  title: `Invisible = Irrelevant`,
+                  subTitle: `No LinkedIn? Stale website? Random Google results? You're handing opportunities to louder voices. Fiction builds your stage.`,
+                  // IMAGE: Split screen showing "Before" - empty Google search results with maybe outdated LinkedIn vs "After" - polished Fiction profile at top of results
+                  media: { url: ImageInvisible },
                   action: {},
                 },
                 {
                   layout: 'left',
                   superTitle: {
-                    icon: { iconId: 'trending-up' },
-                    text: 'Influence on Autopilot',
-                    theme: 'rose',
+                    icon: { iconId: 'brain' },
+                    text: 'Content',
+                    theme: 'purple',
                   },
-                  title: `Content that Connects`,
-                  subTitle: `Have a tough time creating content? Fiction enhances your ideas, making them engaging and shareable.`,
+                  title: `Great ideas need a platform`,
+                  subTitle: `Brilliant thoughts. Zero followers. You know what to say but algorithms bury you. Fiction amplifies your voice without the social media circus.`,
+                  // IMAGE: Person staring at blank screen with thought bubbles full of great ideas, then arrow to engaging content being created
                   media: { url: ImageAudience },
-                  overlays: [{ media: { url: ImageSubscribe } }],
                   action: {},
                 },
                 {
                   layout: 'right',
                   superTitle: {
-                    icon: { iconId: 'rocket' },
-                    text: 'Network Smarter',
-                    theme: 'purple',
-                  },
-                  title: `Connections that Matter`,
-                  subTitle: `Stop relying on social media to connect. Fiction's AI helps you create an audience you own.`,
-                  media: { url: ImageMeeting },
-                  overlays: [{ media: { url: ImageFigMoney } }],
-                  action: {},
-                },
-                {
-                  layout: 'left',
-                  superTitle: {
-                    icon: { iconId: 'chart-bar' },
-                    text: 'AI with Soul',
+                    icon: { class: 'i-tabler-bolt' },
+                    text: 'Influence',
                     theme: 'yellow',
                   },
-                  title: `Create with Clarity`,
-                  subTitle: `Overwhelmed by tech? Fiction’s AI enhances your vision, keeping you in control.`,
-                  media: { url: ImageAi },
+                  title: `AI-Enhanced Authenticity`,
+                  subTitle: ` Fiction learns your voice, your style, your goals. AI that enhances, never replaces.`,
+                  // IMAGE: Before/after of bland corporate text vs engaging, personality-filled content in the person's actual voice
+                  media: { url: ImageMeeting },
+
                   action: {},
                 },
               ],
@@ -115,49 +100,35 @@ export async function getTourPage(args: { factory: CardFactory, stock: StockMedi
         templateId: 'cardPageAreaV1',
         userConfig: {},
         cards: [
-          // await cardConfig<typeof templateMetrics>({
-          //   templateId: 'cardMetricsV1',
-          //   userConfig: {
-          //     items: [
-          //       {
-          //         label: 'Personal Brands',
-          //         description: 'Launched & Thriving',
-          //         value: 8000,
-          //       },
-          //       {
-          //         label: 'Career-Changing Connections',
-          //         description: 'Made Through Fiction',
-          //         value: 2_020_000,
-          //       },
-          //       {
-          //         label: 'Revenue Generated',
-          //         description: 'For Our Members',
-          //         format: 'abbreviatedDollar',
-          //         value: 12_000_000,
-          //       },
-          //     ],
-          //   },
-          // }),
+          cardConfig({
+            templateId: 'cardMetricsV1',
+            userConfig: {
+              items: [
+                {
+                  label: 'Professionals',
+                  description: 'Now Discoverable Online',
+                  value: 12847,
+                },
+                {
+                  label: 'Deal-Closing Conversations',
+                  description: 'Started from Fiction Profiles',
+                  value: 89600,
+                },
+                {
+                  label: 'Lost Opportunities',
+                  description: 'Recovered This Month',
+                  value: 2340,
+                },
+              ],
+            },
+          }),
           cardConfig({
             templateId: 'cardQuotesV1',
             userConfig: {
               items: [
+
                 {
-                  text: `Not having a professional presence online is career suicide. In today's world, you simply don't exist without one.`,
-                  author: {
-                    label: 'Brené Brown',
-                    media: {
-                      format: 'image',
-                      url: PersonBrene,
-                    },
-                    subLabel: 'Research Professor & Author',
-                  },
-                  org: {
-                    label: 'University of Houston',
-                  },
-                },
-                {
-                  text: `<p>Every time someone Googles your name, they're making decisions about you. Are you controlling that narrative or leaving it to chance?</p>`,
+                  text: `<p>Every time someone Googles your name, they're making decisions about you</p>`,
                   author: {
                     label: 'Tim Ferris',
                     media: { url: PersonFerris },
@@ -168,7 +139,7 @@ export async function getTourPage(args: { factory: CardFactory, stock: StockMedi
                   },
                 },
                 {
-                  text: `While you hesitate to build your online presence, someone else is taking your spot, connecting with your audience, and claiming your opportunities.`,
+                  text: `While you hesitate to build your online presence, someone else is taking your spot.`,
                   author: {
                     label: 'Simon Sinek',
                     media: {
@@ -181,6 +152,20 @@ export async function getTourPage(args: { factory: CardFactory, stock: StockMedi
                     label: 'Start With Why',
                   },
                 },
+                {
+                  text: `Not having a professional presence online is career suicide.`,
+                  author: {
+                    label: 'Brené Brown',
+                    media: {
+                      format: 'image',
+                      url: PersonBrene,
+                    },
+                    subLabel: 'Research Professor & Author',
+                  },
+                  org: {
+                    label: 'University of Houston',
+                  },
+                },
               ],
             },
           }),
@@ -191,7 +176,6 @@ export async function getTourPage(args: { factory: CardFactory, stock: StockMedi
         userConfig: {
           standard: {
             primaryColor: 'primary',
-
             background: {
               gradient: {
                 angle: 45,
@@ -210,16 +194,16 @@ export async function getTourPage(args: { factory: CardFactory, stock: StockMedi
               items: [
                 {
                   superTitle: {
-                    icon: { iconId: 'rocket' },
-                    text: 'Stuck in the Shadows?',
-                    theme: 'orange',
+                    icon: { iconId: 'clock' },
+                    text: 'Time\'s Up',
+                    theme: 'red',
                   },
-                  title: `Your Voice [@text_effect type=squiggle]Deserves[/@text_effect] to Lead`,
-                  subTitle: `Building a brand feels impossible? Fiction's AI makes it sharp, simple, and yours.`,
+                  title: `A digital presence in [@text_effect type=squiggle]3 minutes[/@text_effect] or less`,
+                  subTitle: `Every day you wait, someone else claims your space. Fiction builds your presence in seconds, not months.`,
                   action: {
                     buttons: [
                       {
-                        label: 'Claim Your Stage',
+                        label: 'Start Now',
                         icon: 'i-tabler-rocket',
                         href: '/app/auth/register?_reload=1',
                         theme: 'primary',

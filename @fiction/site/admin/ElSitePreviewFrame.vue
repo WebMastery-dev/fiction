@@ -11,12 +11,12 @@ defineProps<{
 <template>
   <div
     v-if="url"
-    class="relative w-full overflow-hidden bg-theme-50 dark:bg-theme-950 aspect-[16/9]"
+    class="relative overflow-hidden bg-theme-50 dark:bg-theme-950 aspect-[1/1]"
   >
     <iframe
       v-if="url"
       :src="url"
-      class="absolute inset-0  w-[400%] h-[400%] transform scale-[25%] origin-top-left pointer-events-none"
+      class="absolute inset-0  w-[500%] h-[500%] transform scale-[20%] origin-top-left pointer-events-none"
       loading="lazy"
       title="Site preview"
     />
@@ -25,11 +25,5 @@ defineProps<{
     </div>
 
     <div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-
-    <div class="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-      <div class="flex items-center justify-center w-8 h-8 rounded-full bg-green-800/90 text-green-0 hover:bg-green-700 shadow-sm transition-colors">
-        <span class="i-tabler-edit text-lg" />
-      </div>
-    </div>
   </div>
 </template>

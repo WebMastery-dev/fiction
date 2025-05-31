@@ -11,7 +11,7 @@ import { getExtensions } from './extensions/index'
 defineOptions({ name: 'ProseEditor' })
 
 const { modelValue = '', supplemental = {}, isContentCompletionDisabled = false, theme = 'blue' } = defineProps<{
-  modelValue: string
+  modelValue?: string
   supplemental?: EditorSupplementary
   isContentCompletionDisabled?: boolean
   theme?: ColorThemeUser
@@ -51,6 +51,8 @@ vue.onMounted(() => {
   })
 })
 
+const editorEl = vue.computed(() => editor.value)
+
 // Expose the editor instance
 defineExpose({ editor })
 </script>
@@ -63,7 +65,7 @@ defineExpose({ editor })
   >
     <div class="text-sm @[350px]/prose:text-base @[700px]/prose:text-2xl">
       <div
-        v-if="!editor"
+        v-if="!editorEl"
         class="flex py-24 justify-center h-[90dvh] text-theme-300 dark:text-theme-700"
       >
         <ElSpinner class="h-12 w-12" />
@@ -73,7 +75,7 @@ defineExpose({ editor })
 
         <EditorContent
           class=" focus:outline-none"
-          :editor="editor"
+          :editor="editorEl"
           data-test-id="prose-editor-content"
         />
       </template>

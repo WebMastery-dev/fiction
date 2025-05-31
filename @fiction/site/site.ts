@@ -1,4 +1,4 @@
-import type { EndpointResponse, FictionRouter, FontFamily, SocialAccounts } from '@fiction/core'
+import type { FictionRouter, FontFamily, SocialAccounts } from '@fiction/core'
 import type { Contact } from '@fiction/plugins/plugin-contact/schema.js'
 import type { Card, CardTemplate } from './card.js'
 import type { FictionSites, ThemeConfig } from './index.js'
@@ -83,9 +83,13 @@ export class Site<T extends SiteSettings = SiteSettings> extends FictionObject<T
   })
 
   url = vue.computed(() => {
-    const origin = this.fictionSites.getOrigin({ subDomain: this.subDomain.value })
-    return `${origin}${this.currentPath.value}`
+    return this.getUrl()
   })
+
+  getUrl(args?: { scope: 'draft' | 'publish', path?: string }): string {
+    const { scope, path = this.currentPath.value } = args || {}
+    return this.fictionSites.getUrl({ subDomain: this.subDomain.value, path, scope })
+  }
 
   constructor(settings: T) {
     super('Site', settings)
@@ -149,7 +153,7 @@ export class Site<T extends SiteSettings = SiteSettings> extends FictionObject<T
   async editorActivateTool(args: { toolId: ToolKeys | '' }) {
     const { toolId } = args
 
-    this.editorController.useTool({ toolId })
+    this.editorController.useTool({ toolId, caller: 'editorActivateTool' })
 
     this.frame.syncTool({ toolId })
   }
@@ -309,7 +313,7 @@ export class Site<T extends SiteSettings = SiteSettings> extends FictionObject<T
 
   update = async (newConfig: Partial<TableSiteConfig>, opts: Partial<Parameters<typeof updateSite>[0]>) => updateSite({ site: this, newConfig, ...opts })
   save = async (args: { minTime?: number, scope?: 'draft' | 'publish' } = {}) => saveSite({ site: this, successMessage: 'Site Saved', ...args })
-  syncChange = (args: { caller: string, noSave?: boolean, withHistory?: boolean, onlyKeys?: (keyof TableSiteConfig)[] }) => {
+  syncChange(args: { caller: string, noSave?: boolean, withHistory?: boolean, onlyKeys?: (keyof TableSiteConfig)[] }) {
     const { caller, noSave = false, withHistory = false, onlyKeys } = args
     this.frame.syncSite(args)
 

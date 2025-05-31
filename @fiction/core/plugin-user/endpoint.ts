@@ -6,7 +6,6 @@ import type { EndpointResponse } from '../types/index.js'
 import type { EndpointMeta } from '../utils/endpoint.js'
 import type { FictionUser, OnboardSettings, Organization } from './index.js'
 import type { User } from './types.js'
-import { id } from 'happy-dom/lib/PropertySymbol.js'
 import { Query } from '../query.js'
 import { standardTable as t } from '../tbl.js'
 import { getGeoFree } from '../utils/geo.js'
@@ -109,7 +108,6 @@ export class QueryManageUser extends UserBaseQuery {
       case 'loginWithCode':{
         const r = await this.loginWithCode(params, meta)
         user = r.user
-        isNew = r.isNew
         sendToken = true
         break
       }
@@ -167,24 +165,29 @@ export class QueryManageUser extends UserBaseQuery {
   }
 
   private async getCreateUser(params: ManageUserParams & { _action: 'getCreate' }, _meta: EndpointMeta): Promise<{ user?: User, isNew: boolean }> {
-    const { where, refreshCode } = params
+    const { where, refreshCode, createUserFields } = params
 
-    let isNew = false
+    // First, try to get existing user
     let user = await this.getUser({ _action: 'retrieve', where }, _meta)
 
-    const { email } = where as { email?: string }
-    if (!user && email) {
-      const { createUserFields } = params
-      const fields: CreateUserFields = { ...createUserFields, email }
-      user = await this.createUser({ _action: 'create', fields }, { ..._meta, server: true })
-      isNew = true
-    }
-    else if (user && refreshCode) {
-      isNew = false
-      user = await this.requestCode({ _action: 'requestCode', where, context: 'getCreate' }, _meta)
+    if (user) {
+      // User exists - just refresh code if requested
+      if (refreshCode) {
+        user = await this.requestCode({ _action: 'requestCode', where, context: 'getCreate' }, _meta)
+      }
+      return { user, isNew: false }
     }
 
-    return { user, isNew }
+    // User doesn't exist - create if email provided
+    const { email } = where as { email?: string }
+    if (email) {
+      const fields: CreateUserFields = { needsOnboarding: true, ...createUserFields, email }
+      user = await this.createUser({ _action: 'create', fields }, { ..._meta, server: true })
+      return { user, isNew: true }
+    }
+
+    // No user found and no email to create with
+    return { user: undefined, isNew: false }
   }
 
   private async getUserWithToken(params: ManageUserParams & { _action: 'getUserWithToken' }, meta: EndpointMeta): Promise<User | undefined> {
@@ -446,7 +449,7 @@ export class QueryManageUser extends UserBaseQuery {
     return { user: finalUser, isNew: false }
   }
 
-  private async loginWithCode(params: ManageUserParams & { _action: 'loginWithCode' }, meta: EndpointMeta): Promise<{ user?: User, isNew: boolean }> {
+  private async loginWithCode(params: ManageUserParams & { _action: 'loginWithCode' }, meta: EndpointMeta): Promise<{ user?: User }> {
     const { where, code, newPassword, keepCode = false } = params
 
     if (!where || !code) {
@@ -489,7 +492,7 @@ export class QueryManageUser extends UserBaseQuery {
 
     const finalUser = await this.getUser({ _action: 'retrieve', where }, meta)
 
-    return { user: finalUser, isNew: !finalUser?.hashedPassword }
+    return { user: finalUser }
   }
 
   private googleClient?: OAuth2Client
@@ -572,8 +575,10 @@ export class QueryManageUser extends UserBaseQuery {
 
       user.orgs = orgsResponse.data ?? []
 
+      const hasOrgs = user.orgs?.filter(_ => _.orgId !== 'system').length > 0
+
       // this ensures that a user has at least one org
-      if (orgsResponse.status === 'success' && user.orgs.length === 0) {
+      if (orgsResponse.status === 'success' && !hasOrgs) {
         const p = params as ManageUserParams & { _action: 'create' }
         const orgName = p.fields?.orgName
         const orgId = p.fields?.orgId

@@ -13,8 +13,7 @@ import Tasks from './Tasks.vue'
 const props = defineProps<{
   widget: WidgetConfig
   card: Card
-  primarySite: Site
-  loading: boolean
+  primarySite?: Site
   org: Organization
 }>()
 
@@ -78,7 +77,7 @@ const liveSiteUrl = vue.computed(() => props.primarySite?.url.value || '')
         >
           <!-- Site preview iframe -->
           <ElSitePreviewFrame
-            :url="primarySite?.frame.currentSiteFrameUrl.value"
+            :url="primarySite?.frame.framePageUrl()"
             class="w-full h-full"
           />
 

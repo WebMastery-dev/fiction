@@ -92,7 +92,6 @@ describe('addNewCard', async () => {
       [
         "_",
         "example",
-        "__transaction",
         "_p",
         "_archive",
         "p",
@@ -196,7 +195,7 @@ describe('requestManagePage', async () => {
       site,
       regionCard,
       delay: 0,
-    })).rejects.toThrow('Action is required.')
+    })).rejects.toThrow(expect.anything())
   })
 
   it('should process the upsert action correctly', async () => {

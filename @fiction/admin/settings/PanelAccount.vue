@@ -74,14 +74,14 @@ const options = vue.computed(() => {
       input: 'group',
       icon: { class: 'i-tabler-social' },
       options: [
-        createOption({ schema, key: 'accounts.x', label: 'X / Twitter URL', input: 'InputUrl', placeholder: 'https://www.x.com/username' }),
-        createOption({ schema, key: 'accounts.instagram', label: 'Instagram URL', input: 'InputUrl', placeholder: 'https://www.instagram.com/username' }),
-        createOption({ schema, key: 'accounts.linkedin', label: 'LinkedIn URL', input: 'InputUrl', placeholder: 'https://www.linkedin.com/in/username' }),
-        createOption({ schema, key: 'accounts.facebook', label: 'Facebook URL', input: 'InputUrl', placeholder: 'https://www.facebook.com/username' }),
-        createOption({ schema, key: 'accounts.github', label: 'GitHub URL', input: 'InputUrl', placeholder: 'https://www.github.com/username' }),
-        createOption({ schema, key: 'accounts.youtube', label: 'YouTube URL', input: 'InputUrl', placeholder: 'https://www.youtube.com/channel/username' }),
-        createOption({ schema, key: 'accounts.pinterest', label: 'Pinterest URL', input: 'InputUrl', placeholder: 'https://www.pinterest.com/username' }),
-        createOption({ schema, key: 'accounts.tiktok', label: 'TikTok URL', input: 'InputUrl', placeholder: 'https://www.tiktok.com/@username' }),
+        createOption({ schema, key: 'accounts.x', label: 'X / Twitter Username', input: 'InputText', placeholder: 'username' }),
+        createOption({ schema, key: 'accounts.instagram', label: 'Instagram Username', input: 'InputText', placeholder: 'username' }),
+        createOption({ schema, key: 'accounts.linkedin', label: 'LinkedIn Username', input: 'InputText', placeholder: 'username' }),
+        createOption({ schema, key: 'accounts.facebook', label: 'Facebook Username', input: 'InputText', placeholder: 'username' }),
+        createOption({ schema, key: 'accounts.github', label: 'GitHub Username', input: 'InputText', placeholder: 'username' }),
+        createOption({ schema, key: 'accounts.youtube', label: 'YouTube Username', input: 'InputText', placeholder: 'username' }),
+        createOption({ schema, key: 'accounts.pinterest', label: 'Pinterest Username', input: 'InputText', placeholder: 'username' }),
+        createOption({ schema, key: 'accounts.tiktok', label: 'TikTok Username', input: 'InputText', placeholder: 'username' }),
       ],
     }),
   ]
@@ -122,7 +122,7 @@ async function requestCode(): Promise<void> {
     if (!userId)
       throw new Error('userId is missing')
 
-    const r = await service.fictionAdmin.emailActions.oneTimeCode.requestSend({ to: email, userId, queryVars: {} })
+    const r = await service.fictionUser.requests.ManageUserEmail.request({ _action: 'oneTimeCode', email, userId, queryVars: {}, caller: 'panelAccount' })
 
     if (r?.status === 'success') {
       service.fictionEnv.events.emit('notify', { type: 'success', message: 'We sent you a one-time-code' })
@@ -193,13 +193,15 @@ const toolFormOptions = vue.computed<InputOption[]>(() => {
     title="User Settings"
     :loading
     :header
-    :action="{ buttons: [{
-      label: isDirty ? 'Save Changes' : 'Saved',
-      onClick: () => save(),
-      theme: isDirty ? 'primary' : 'default',
-      loading: sending === 'saving',
-      icon: isDirty ? 'i-tabler-upload' : 'i-tabler-check',
-    }] }"
+    :action="{
+      buttons: [{
+        testId: 'saveButton',
+        label: isDirty ? 'Save Changes' : 'Saved',
+        onClick: () => save(),
+        theme: isDirty ? 'primary' : 'default',
+        loading: sending === 'saving',
+        icon: isDirty ? 'i-tabler-upload' : 'i-tabler-check',
+      }] }"
   >
     <FormEngine
       :model-value="user"

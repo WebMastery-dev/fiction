@@ -39,7 +39,7 @@ type MergeTypes<T, U> = T & Omit<U, keyof T>
 
 export type CardTemplateSurfaceDefault<T extends string = string> = Partial<{
   templateId: T
-  userConfig: any // Changed from Record<string, unknown> to any for flexibility
+  userConfig: Record<string, unknown>
   schema: z.ZodType<any>
   queries: Record<string, Query>
   component: ComponentConstructor
@@ -93,6 +93,9 @@ export interface CardTemplateSettings<
 export class CardTemplate<
   S extends CardTemplateSurfaceDefault = CardTemplateSurfaceDefault,
 > extends FictionObject<CardTemplateSettings<S>> {
+  // type helper
+  userConfig: CardTemplateUserConfigAll<S> = {} as CardTemplateUserConfigAll<S>
+
   constructor(settings: CardTemplateSettings<S>) {
     super('CardTemplate', { title: toLabel(settings.templateId), ...settings })
   }
@@ -178,28 +181,6 @@ export function cardTemplate<
   }>(settings)
 }
 
-// Alternative: More flexible version that accepts any ZodType
-export function cardTemplateFlexible<
-  TTemplateId extends string,
-  TSchema extends z.ZodType,
-  TComponent extends ComponentConstructor,
-  TQueries extends Record<string, Query> = Record<string, Query>,
->(settings: CardTemplateSettings<{
-  templateId: TTemplateId
-  component: TComponent
-  queries: TQueries
-  userConfig: z.infer<TSchema>
-  schema: TSchema
-}>) {
-  return new CardTemplate<{
-    templateId: TTemplateId
-    userConfig: z.infer<TSchema>
-    schema: TSchema
-    queries: TQueries
-    component: TComponent
-  }>(settings)
-}
-
 export type CardSettings<T extends Record<string, unknown> = Record<string, unknown>> = CardConfigPortable<T> & {
   site?: Site
   inlineTemplate?: CardTemplate<any>
@@ -242,6 +223,7 @@ export class Card<
   title = vue.ref(this.settings.title)
   description = vue.ref(this.settings.description)
   slug = vue.ref(this.settings.slug)
+  priority = vue.ref(this.settings.priority)
   displayTitle = vue.computed(() => this.title.value || toLabel(this.slug.value))
   editorConfig = vue.shallowRef(this.settings.editorConfig || {} as T) as vue.Ref<vue.UnwrapRef<T>> // editor only temporary config, not saved (signals/triggers)
   userConfig = vue.shallowRef(this.settings.userConfig || {} as T) as vue.Ref<vue.UnwrapRef<T>> // allow passing of components and other complex objects
@@ -442,6 +424,7 @@ export class Card<
       scope: this.settings.scope,
       isHome: !!this.isHome.value,
       nav: this.nav.value,
+      priority: this.priority.value,
     }
   }
 

@@ -7,7 +7,9 @@ import { getMountContext } from '../load'
 
 const service = useService<{ fictionAppSites: FictionApp, fictionRouterSites: FictionRouter, fictionSites: FictionSites }>()
 
-const base = service.fictionSites.getQueryItemPreviewPath
+const base = vue.computed(() => {
+  return service.fictionRouter.current.value.path || '/'
+})
 
 /**
  * Set base for relative links using native <base> tag
@@ -18,7 +20,7 @@ unhead.useHead({
   },
 })
 
-const themeIds = vue.computed(() => service.fictionSites.themes.value.map(theme => theme.themeId))
+const themeIds = vue.computed(() => service.fictionSites.themes.value.map(theme => theme?.themeId))
 
 // Reference to hold the mounted app
 let entry: FictionAppEntry | undefined = undefined

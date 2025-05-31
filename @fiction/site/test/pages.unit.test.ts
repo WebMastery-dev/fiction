@@ -35,9 +35,9 @@ describe('site plugin tests', async () => {
       [
         "welcome",
         "example",
-        "__transaction",
         "_p",
         "_archive",
+        "_manage",
       ]
     `)
 
@@ -72,6 +72,7 @@ describe('site plugin tests', async () => {
         "/blog/second-post",
         "/_p",
         "/_archive",
+        "/_manage",
       ]
     `)
     const expectedPaths = [
@@ -81,6 +82,7 @@ describe('site plugin tests', async () => {
       '/blog/second-post',
       '/_p',
       '/_archive',
+      '/_manage',
     ]
 
     expect(paths).toEqual(expectedPaths)
@@ -97,6 +99,7 @@ describe('site plugin tests', async () => {
         "/test/blog/second-post",
         "/test/_p",
         "/test/_archive",
+        "/test/_manage",
       ]
     `)
   })

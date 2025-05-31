@@ -11,7 +11,6 @@ import favicon from '@fiction/ui/brand/favicon.svg'
 import icon from '@fiction/ui/brand/icon.png'
 import shareImage from '@fiction/ui/brand/shareImage.png'
 import * as affiliate from './affiliate/index.js'
-import { getDemosPage } from './demos/index.js'
 import * as developer from './developer/index.js'
 import * as homePage from './home/index.js'
 import { getAboutPage } from './pages/about/index.js'
@@ -42,7 +41,6 @@ export async function getConfig(args: {
     homePage.getHomePage(pageArgs),
     getPricingPage(pageArgs),
     getAboutPage(),
-    getDemosPage(pageArgs),
     developer.page({ ...args }),
     affiliate.page({ ...args, factory }),
     ...demoPages,
@@ -80,23 +78,25 @@ export async function getConfig(args: {
     sections: {
 
       header: cardConfig({
+        templateId: 'cardPageAreaV1',
         cards: [
           cardConfig({
             templateId: 'cardSiteNavV1',
             userConfig: {
-              layout: 'navCenter',
               brand: {
                 logo: {
                   variant: 'media',
                   media: stock.getLocalMedia({ key: 'fictionLogo' }),
                 },
               },
-
+              hideSubscribe: true,
+              redirectAfterLogin: '/app',
             },
           }),
         ],
       }),
       footer: cardConfig({
+        templateId: 'cardPageAreaV1',
         cards: [
           cardConfig({
             templateId: 'cardFooterProV1',
@@ -127,25 +127,10 @@ export async function getConfig(args: {
               },
               menus: [
                 {
-                  title: 'Explore',
-                  items: [
-                    { href: '/tour', label: 'Tour' },
-                    { href: '/pricing', label: 'Pricing' },
-                    { href: '/developer', label: 'Developer' },
-                  ],
-                },
-                {
-                  title: 'Company',
+                  title: 'Links',
                   items: [
                     { href: '/about', label: 'About' },
-                    { href: '/affiliate', label: 'Affiliate' },
-                  ],
-                },
-                {
-                  title: 'Using Fiction',
-                  items: [
-                    { href: `https://docs.${domain}`, label: 'Docs', target: '_blank' },
-                    { href: `https://docs.${domain}/resources/support.html`, label: 'Support', target: '_blank' },
+                    { href: '/tour', label: 'Tour' },
                     { href: '/app?_reload=1', label: 'Dashboard' },
                   ],
                 },

@@ -52,7 +52,7 @@ export type PageTemplate = {
 export type ThemeSettings<T extends Record<string, unknown> = Record<string, unknown>> = {
 
   getTemplates?: (args: { site: Site }) => Promise<CardTemplate<any>[]>
-  getPageTemplates?: () => PageTemplate[]
+  getPageTemplates?: (args: { site: Site }) => PageTemplate[]
   getBaseConfig?: () => Partial<ThemeConfig> & { userConfig: T }
   getConfig: (args: ThemeConfigArgs) => Promise<ThemeConfig>
 
@@ -74,8 +74,8 @@ export class Theme<T extends Record<string, unknown> = Record<string, unknown>> 
     super('Theme', settings)
   }
 
-  getPageTemplates() {
-    return this.settings.getPageTemplates?.() || []
+  getPageTemplates(args: { site: Site }) {
+    return this.settings.getPageTemplates?.(args) || []
   }
 
   async loadThemeTemplates(args: { site: Site }) {
@@ -118,16 +118,19 @@ export class Theme<T extends Record<string, unknown> = Record<string, unknown>> 
     return {
       sections: {
         header: cardConfig({
+          templateId: 'cardPageAreaV1',
           cards: [
             cardConfig({ templateId: 'cardSiteNavV1' }),
           ],
         }),
         footer: cardConfig({
+          templateId: 'cardPageAreaV1',
           cards: [
             cardConfig({ templateId: 'cardStandardFooterV1' }),
           ],
         }),
         hidden: cardConfig({
+          templateId: 'cardPageAreaV1',
           cards: [
             cardConfig({ templateId: 'cardModalMediaV1' }),
             cardConfig({ templateId: 'cardTextEffectV1' }),
@@ -141,9 +144,9 @@ export class Theme<T extends Record<string, unknown> = Record<string, unknown>> 
             mono: { family: 'DM Mono', stack: 'monospace' },
             input: { family: 'DM Mono', stack: 'sans' },
             title: { family: 'Poppins', stack: 'sans' },
-            sans: { stack: 'sans' },
             body: { stack: 'sans' },
-            serif: { family: 'lora', stack: 'serif' },
+            sans: { stack: 'sans' },
+            serif: { stack: 'serif' },
             highlight: { family: 'Caveat', stack: 'sans' },
           },
         },

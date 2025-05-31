@@ -59,6 +59,10 @@ const stepConfig: StepConfig = {
         key: 'name',
         class: 'max-w-lg',
         onClick: async () => requestCreateSite(),
+        button: {
+          label: 'Create Site',
+          icon: 'check',
+        },
       },
       // {
       //   title: `Select Your Theme`,
@@ -98,9 +102,6 @@ const stepConfig: StepConfig = {
           data-test-id="siteName"
           required
         />
-      </div>
-      <div v-else-if="step.key === 'theme'">
-        <ElThemeSelect v-model="form.themeId" required :card />
       </div>
     </ElStepNav>
   </ElModal>

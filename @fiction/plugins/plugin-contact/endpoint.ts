@@ -47,6 +47,7 @@ export class ManageContactQuery extends SubscribeEndpoint {
       case 'create':
         r = await this.create(params, meta)
         break
+
       case 'bulkCreate':
         r = await this.bulkCreate(params, meta)
         break
@@ -73,15 +74,13 @@ export class ManageContactQuery extends SubscribeEndpoint {
       return { status: 'error', message: 'Invalid action' }
     }
 
-
     return this.addIndexMeta(params, r, meta)
   }
 
   private async addIndexMeta(params: ManageContactParams, r: ManageContactResponse, _meta?: EndpointMeta): Promise<ManageContactResponse> {
-
     const { _action } = params
 
-    if(_action === 'current') {
+    if (_action === 'current') {
       return r
     }
 
@@ -97,6 +96,46 @@ export class ManageContactQuery extends SubscribeEndpoint {
     r.indexMeta = { limit, offset, count: +count, ...r.indexMeta }
 
     return r
+  }
+
+  // private async sendVerifySubscribe(params: ManageContactParams & { _action: 'sendVerifySubscribe' }, meta: EndpointMeta): Promise<ManageContactResponse> {
+  //   const { email, targetOrgId, tags = [] } = params
+
+  //   const org = await this.getOrganization(targetOrgId)
+  //   const emailVars = await createEmailVars({
+  //     email,
+  //     fictionUser: this.settings.fictionUser,
+  //     callbackPath: '__manage',
+  //     queryVars: { tags: tags.join(','), targetOrgId, action: 'subscribe' },
+  //   })
+
+  //   const emailConfig: EmailSendConfig = {
+  //     ...await this.settings.fictionEmail?.defaultEmailConfig(),
+  //     subject: `${org.orgName}: Confirm your subscription`,
+  //     title: 'Confirm Your Subscription',
+  //     subTitle: 'Just click to complete',
+  //     content: `Click the button to confirm you'd like to follow <strong>${org.orgName}</strong>.`,
+  //     to: email,
+  //     senderName: org.orgName,
+  //     senderEmail: org.orgEmail,
+  //     emailType: 'alert' as const,
+  //     buttons: [{ label: 'Confirm', href: emailVars.callbackUrl, theme: 'primary' }],
+  //     superTitle: { text: org.orgName, icon: org.avatar },
+  //   }
+
+  //   await this.settings.fictionEmail?.renderAndSendEmail(emailConfig, { caller: 'subscribe', ...meta })
+  //   return this.getCurrentContact({ targetOrgId, userId: emailVars.userId, _action: 'current' }, meta)
+  // }
+
+  private async getOrganization(orgId: string) {
+    const response = await this.settings.fictionUser.queries.ManageOrganization.serve(
+      { _action: 'read', where: { orgId } },
+      { server: true, caller: 'subscribe' },
+    )
+
+    if (!response.data)
+      throw abort('Organization not found')
+    return response.data
   }
 
   private async getCurrentContact(params: ManageContactParams & { _action: 'current' }, meta: EndpointMeta): Promise<ManageContactResponse> {

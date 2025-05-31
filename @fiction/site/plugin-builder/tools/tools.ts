@@ -3,11 +3,20 @@ import type { Site } from '../../site'
 import { AdminEditorController } from '@fiction/admin'
 import { vue } from '@fiction/core'
 
-export type ToolKeys = 'pages' | 'pageAdd' | 'pageEdit' | 'sectionsAdd' | 'sectionsLayout' | 'siteSettings' | 'cardEdit'
+export type ToolKeys = 'pages' | 'pageAdd' | 'pageEdit' | 'sectionsAdd' | 'sectionsLayout' | 'siteSettings' | 'cardEdit' | 'allPages'
 
 export function getTools(args: { site: Site }) {
+  const { site } = args
   return [
-
+    {
+      toolId: 'allPages',
+      title: 'Pages',
+      icon: { class: 'i-tabler-files' },
+      design: 'inline',
+      isPrimary: true,
+      onClick: () => (site.editingPageId.value = ''),
+      isActive: () => site.editingPageId.value === '',
+    },
     {
       toolId: 'pageEdit',
       title: 'Edit Page',
@@ -30,14 +39,6 @@ export function getTools(args: { site: Site }) {
       isPrimary: true,
       design: 'drawer',
     },
-    // {
-    //   toolId: 'sectionsAdd',
-    //   title: 'Add New',
-    //   icon: { class: 'i-tabler-plus' },
-    //   el: vue.defineAsyncComponent(async () => import('./ToolSectionsAdd.vue')),
-    //   isPrimary: true,
-    //   design: 'drawer',
-    // },
 
     {
       toolId: 'siteSettings',

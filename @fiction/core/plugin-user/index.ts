@@ -7,16 +7,17 @@ import type { FictionServer } from '../plugin-server/index.js'
 import type { FictionPluginSettings } from '../plugin.js'
 import type { ManageUserParams } from './endpoint.js'
 import type { Organization, OrganizationMember, User } from './types.js'
-import { HooksUtil } from '@fiction/core/utils/hook.js'
 import { EnvVar, vars } from '../plugin-env/index.js'
 // likely fixed in TS 4.8
 import { FictionPlugin } from '../plugin.js'
 import { TypedEventTarget } from '../utils/eventTarget.js'
+import { HooksUtil } from '../utils/hook.js'
 import { isActualBrowser, safeDirname, vue } from '../utils/index.js'
 import { createUserToken, decodeUserToken, manageClientUserToken } from '../utils/jwt.js'
 import { getAccessLevel, userCan, userCapabilities } from '../utils/priv.js'
 import * as priv from '../utils/priv.js'
 import { QueryManageUser } from './endpoint.js'
+import { ManageUserEmail } from './endpointEmail.js'
 import { QueryManageMemberRelation, QueryManageOrganization, QueryOrganizationsByUserId } from './endpointOrg.js'
 import { GetTopValues } from './endpointTopValues.js'
 import { FictionUserEnrich } from './enrich/pluginEnrich.js'
@@ -78,6 +79,7 @@ export class FictionUser extends FictionPlugin<UserPluginSettings> {
   googleClientSecret = this.settings.googleClientSecret
   queries = {
     ManageUser: new QueryManageUser({ ...this.settings, fictionUser: this }),
+    ManageUserEmail: new ManageUserEmail({ ...this.settings, fictionUser: this }),
     ManageOrganization: new QueryManageOrganization({ ...this.settings, fictionUser: this }),
     ManageMemberRelation: new QueryManageMemberRelation({ ...this.settings, fictionUser: this }),
     OrganizationsByUserId: new QueryOrganizationsByUserId({ ...this.settings, fictionUser: this }),
@@ -110,7 +112,7 @@ export class FictionUser extends FictionPlugin<UserPluginSettings> {
 
     this.initBrowser()
 
-    this.settings.fictionEnv.hooks.on('generate', 'setup:systemOrg', async () => {
+    this.settings.fictionDb.hooks.on('extend', 'setup:systemOrg', async () => {
       await setupSystemOrg({ fictionUser: this })
     })
   }

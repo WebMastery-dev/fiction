@@ -61,7 +61,7 @@ function getTabClasses(tabType: 'latest' | 'popular' | 'archive') {
 
 <template>
   <div
-    class="post-layout grid grid-cols-1 gap-12 xl:gap-16"
+    class="post-layout grid grid-cols-1 gap-12 xl:gap-20"
   >
     <div v-if="header?.title" class="flex gap-16 xl:gap-36 items-center">
       <!-- Content section -->
@@ -141,18 +141,18 @@ function getTabClasses(tabType: 'latest' | 'popular' | 'archive') {
         <div>
           <button
             :class="getTabClasses('archive')"
-            @click="emit('update:sortBy', 'popular')"
+            :href="card?.link('/a')"
           >
             View All
           </button>
         </div>
       </div>
-      <div class="grid grid-cols-12 gap-12" :class="layout === 'magazine' ? 'pt-12' : ''">
+      <div class="" :class="layout === 'magazine' ? 'pt-12 lg:pt-16' : ''">
         <div class="w-full @container/post-list grow col-span-12">
           <div
             v-if="regularPosts.length > 0"
             class="grid"
-            :class="layout === 'magazine' ? 'grid grid-cols-1 @[500px]/post-list:grid-cols-2 @[1000px]/post-list:grid-cols-3 gap-12' : 'divide-y divide-theme-700/50'"
+            :class="layout === 'magazine' ? 'grid grid-cols-1 @[500px]/post-list:grid-cols-2 @[1000px]/post-list:grid-cols-3 gap-12 xl:gap-16' : 'divide-y divide-theme-700/50'"
           >
             <PostItem
               v-for="post in regularPosts"
@@ -164,8 +164,8 @@ function getTabClasses(tabType: 'latest' | 'popular' | 'archive') {
             />
           </div>
           <div v-else-if="!loading && featuredPosts.length === 0" class="text-center py-12">
-            <p class="text-theme-500 dark:text-theme-400 text-lg">
-              No posts available
+            <p class="text-theme-500 dark:text-theme-400">
+              More stories coming soon
             </p>
           </div>
         </div>

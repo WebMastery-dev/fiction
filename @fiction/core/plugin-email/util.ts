@@ -1,5 +1,5 @@
-import type { colorList, ColorThemeBright } from '@fiction/core/utils/colors'
 import type { ActionButton, MediaObject, NavListItem, SuperTitle } from '../schemas'
+import type { colorList, ColorThemeBright } from '../utils/colors'
 import { z } from 'zod/v4'
 
 export const EmailTypeSchema = z.enum(['alert', 'update', 'digest', 'campaign'])
@@ -9,8 +9,8 @@ export type EmailSendConfig = {
 
   // content
   superTitle?: SuperTitle
-  title?: string
-  subTitle?: string
+  title: string
+  subTitle: string
   content?: string
   contentMarkdown?: string
   mediaFeatured?: MediaObject
@@ -28,7 +28,7 @@ export type EmailSendConfig = {
 
   // Email specifics
 
-  subject?: string
+  subject: string
   preview?: string
   avatar?: MediaObject
   senderName?: string
@@ -41,7 +41,7 @@ export type EmailSendConfig = {
   toUserId?: string
   fromOrgId?: string
   env?: 'prod' | 'dev' | 'test'
-  caller?: string
+  caller: string
 
   emailType?: EmailType
 

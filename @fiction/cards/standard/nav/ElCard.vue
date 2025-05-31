@@ -1,90 +1,137 @@
 <script setup lang="ts">
+import type { FictionAdmin } from '@fiction/admin'
 import type { NavListItem } from '@fiction/core'
 import type { Card } from '@fiction/site/card'
 import type { UserConfig } from './config'
-import { toLabel, useService, vue } from '@fiction/core'
+import { getFictionAuthUrl, getFictionNavItems } from '@fiction/admin'
+import { sortPriority, toLabel, useService, vue } from '@fiction/core'
+import XButton from '@fiction/ui/buttons/XButton.vue'
+import ElAvatar from '@fiction/ui/common/ElAvatar.vue'
+import XDropDown from '@fiction/ui/common/XDropDown.vue'
 import XLink from '@fiction/ui/common/XLink.vue'
+import XIcon from '@fiction/ui/media/XIcon.vue'
 import XLogoType from '@fiction/ui/media/XLogoType.vue'
-import UserMenu from '@fiction/ui/nav/UserMenu.vue'
 import CardWrap from '../../CardWrap.vue'
-import { processNavItems } from '../../utils/nav'
 
 const { card } = defineProps<{ card: Card<UserConfig> }>()
-const { fictionUser } = useService()
+const { fictionUser, fictionAdmin } = useService<{ fictionAdmin: FictionAdmin }>()
 
+const user = vue.computed(() => fictionUser.activeUser?.value)
 const uc = vue.computed(() => card.userConfig.value || {})
+const isEditable = vue.computed(() => card.site?.isEditable.value)
 
-// Process navigation items for both primary and utility nav
+const hoverClass = 'hover:opacity-70 transition-opacity duration-100'
+
+// Navigation pages
 const nav = vue.computed(() => {
   const siteRouter = card.site?.siteRouter
-  const pages: NavListItem[] = card.site?.pages.value.filter(p => !p.isSystem.value && p.nav.value === 'show').map(page => ({
-    label: page.title.value || toLabel(page.slug.value),
-    href: `/${page.isHome.value ? '' : page.slug.value}`,
-  })) || []
-
-  const out = {
-    primary: processNavItems({
-      items: pages || [],
-      fictionRouter: siteRouter,
-      fictionUser,
-      basePathPrefix: '',
-    }),
-  }
-
-  return out
+  return sortPriority(
+    card.site?.pages.value
+      .filter(p => !p.isSystem.value && p.nav.value === 'show')
+      .map((page) => {
+        const href = `/${page.isHome.value ? '' : page.slug.value}`
+        return {
+          label: page.title.value || toLabel(page.slug.value),
+          href,
+          isActive: href === siteRouter?.current.value.path,
+          priority: page.priority.value,
+          icon: { class: 'i-tabler-file' },
+        }
+      }) || [],
+    { centerNumber: 100 },
+  )
 })
+
+// All mobile menu items
+const mobileItems = vue.computed(() => [
+  ...nav.value,
+  ...((!isEditable.value && !uc.value.hideSubscribe)
+    ? [{
+        label: card.site?.activeContact?.value?.status === 'active' ? 'Subscribed' : 'Subscribe',
+        href: card.site?.activeContact?.value?.status === 'active' ? undefined : '?_subscribe=1',
+        icon: { class: 'i-tabler-bell' },
+      }]
+    : []),
+  ...(user.value
+    ? getFictionNavItems({ fictionAdmin, fictionUser })
+    : !isEditable.value
+        ? [{
+            label: 'Sign In',
+            href: getFictionAuthUrl({ fictionAdmin, site: card.site, redirect: uc.value.redirectAfterLogin }),
+            icon: { class: 'i-tabler-login' },
+          }]
+        : []),
+])
 </script>
 
 <template>
-  <CardWrap :card>
-    <div class="z-20">
-      <div class="x-header-container">
-        <div class="relative">
-          <nav class="" aria-label="Global">
-            <div class="relative flex items-center justify-between gap-8">
-              <div class="inline-flex justify-start basis-0 grow">
-                <XLink
-                  :card
-                  href="/"
-                  class="flex items-end group"
-                >
-                  <XLogoType
-                    :logo="uc.brand?.logo"
-                    :classes="{
-                      text: 'x-font-title text-lg font-bold',
-                    }"
-                    :media-handling="{ height: 1.6 }"
-                    class="transition-all group-hover:opacity-80 duration-200"
-                    data-test-id="page-nav-logo"
-                    :org="card.site?.org.value"
-                  />
-                </XLink>
-              </div>
+  <CardWrap :card class="border-b border-theme-700 bg-theme-900/50" vertical-spacing="none">
+    <div class="flex items-center justify-between">
+      <!-- Logo -->
+      <XLink :card href="/" :class="`py-2 ${hoverClass} flex items-center gap-2`">
+        <XLogoType
+          :logo="uc.brand?.logo"
+          :classes="{ text: 'x-font-title text-lg font-bold' }"
+          :media-handling="{ height: 2 }"
+          :org="card.site?.org.value"
+        />
+      </XLink>
 
-              <div
-                class="hidden md:flex gap-x-6 items-center grow-0"
-              >
-                <XLink
-                  v-for="(item, i) in nav.primary"
-                  :key="i"
-                  :card
-                  :href="item.href"
-                  class="py-1 text-sm font-sans inline-flex items-center  transition-all duration-200 font-medium"
-                  effect="underline"
-                  :is-active="item.isActive"
-                >
-                  {{ item.label }}
-                </XLink>
-              </div>
+      <!-- Desktop Nav -->
+      <nav class="hidden md:flex space-x-6">
+        <XLink
+          v-for="item in nav"
+          :key="item.href"
+          :card
+          :href="item.href"
+          class="relative py-4 px-1 text-sm font-medium transition-colors duration-200"
+          :class="item.isActive
+            ? 'text-theme-900 dark:text-theme-0'
+            : 'text-theme-600 dark:text-theme-400 hover:text-theme-900 dark:hover:text-theme-0'"
+        >
+          {{ item.label }}
+        </XLink>
+      </nav>
 
-              <!-- Utility Navigation -->
-              <div class="gap-x-6 flex items-center justify-end basis-0 grow">
-                <UserMenu :card :nav="nav.primary" />
-              </div>
-            </div>
-          </nav>
-        </div>
+      <!-- Desktop Actions -->
+      <div class="hidden md:flex items-center gap-4">
+        <XButton
+          v-if="!user && !isEditable"
+          :href="getFictionAuthUrl({ fictionAdmin, site: card.site, redirect: uc.redirectAfterLogin })"
+          icon-after="i-tabler-chevron-right"
+          design="link"
+          :class="hoverClass"
+        >
+          Sign In
+        </XButton>
+
+        <XDropDown
+          v-if="user"
+          :items="getFictionNavItems({ fictionAdmin, fictionUser })"
+          dropdown-alignment="end"
+          mode="click"
+          :classes="{ width: 'w-64' }"
+        >
+          <div :class="`flex items-center gap-2 cursor-pointer ${hoverClass}`">
+            <ElAvatar class="size-8" :user="user" />
+            <XIcon class="size-4" :media="{ class: 'i-tabler-chevron-down' }" />
+          </div>
+        </XDropDown>
       </div>
+
+      <!-- Mobile Menu -->
+      <XDropDown
+        class="md:hidden"
+        :items="mobileItems"
+        dropdown-alignment="end"
+        mode="click"
+        :classes="{ width: 'w-64' }"
+      >
+        <div :class="`flex items-center gap-2 p-2 pr-0 cursor-pointer ${hoverClass}`">
+          <ElAvatar v-if="user" class="size-8" :user="user" />
+          <XIcon class="size-6 text-theme-600 dark:text-theme-400" :media="{ class: 'i-tabler-menu-2' }" />
+        </div>
+      </XDropDown>
     </div>
   </CardWrap>
 </template>

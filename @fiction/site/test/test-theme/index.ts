@@ -1,4 +1,4 @@
-import { cardConfig, getCardTemplates } from '@fiction/cards'
+import { cardConfig, cardConfigCustom, getCardTemplates } from '@fiction/cards'
 import { safeDirname, vue } from '@fiction/core'
 import { z } from 'zod/v4'
 import { cardTemplate } from '../../card.js'
@@ -16,7 +16,7 @@ async function getTemplates() {
       el: def(async () => import('./TemplateWrap.vue')),
       isPageCard: true,
       sections: {
-        test: cardConfig({ cards: [] }),
+        test: cardConfig({ templateId: 'cardPageAreaV1', cards: [] }),
       },
     }),
     cardTemplate({
@@ -72,11 +72,12 @@ export const theme = new Theme({
     return {
       userConfig: {},
       sections: {
-        header: cardConfig({ cards: [] }),
-        footer: cardConfig({ cards: [] }),
+        header: cardConfig({ templateId: 'cardPageAreaV1', cards: [] }),
+        footer: cardConfig({ templateId: 'cardPageAreaV1', cards: [] }),
       },
       pages: [
         cardConfig({
+          templateId: 'cardPageWrapV1',
           slug: 'welcome',
           isHome: true,
           title: 'Default Page',
@@ -89,7 +90,7 @@ export const theme = new Theme({
             { templateId: 'cardHeroV1' },
           ],
         }),
-        cardConfig<TemplatesType>({
+        cardConfigCustom<TemplatesType>({
           slug: 'example',
           title: 'Example Page',
           templateId: 'testWrap',

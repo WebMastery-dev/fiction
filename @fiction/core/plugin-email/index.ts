@@ -134,4 +134,25 @@ export class FictionEmail extends FictionPlugin<FictionEmailSettings> {
 
     return images
   }
+
+  async defaultEmailConfig(): Promise<Omit<EmailSendConfig, 'to' | 'title' | 'subTitle'>> {
+    const fictionEnv = this?.settings.fictionEnv
+
+    const emailImages = await this?.emailImages()
+    const app = fictionEnv?.meta || {}
+    return {
+      subject: 'No Subject',
+      senderName: app.name || '',
+      senderEmail: app.email || '',
+      superTitle: {
+        icon: { url: emailImages.icon.url },
+        text: 'Fiction',
+        href: `https://www.fiction.com`,
+      },
+      streetAddress: app.streetAddress || '23807 Aliso Creek Rd Suite 100, Laguna Niguel, CA 92677',
+      poweredByFiction: true,
+      fromOrgId: app.systemOrgId,
+      caller: 'transactionalEmail',
+    }
+  }
 }

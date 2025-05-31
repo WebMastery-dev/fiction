@@ -1,7 +1,6 @@
 import type { FictionApp, FictionEmail, FictionMedia, FictionRouter, FictionServer, FictionUser } from '@fiction/core'
 import type { FictionPluginSettings } from '@fiction/core/plugin.js'
 import type { FictionStripe } from '@fiction/plugin-stripe/index.js'
-import type { FictionTransactions } from '@fiction/plugin-transactions'
 import type { FictionAi } from '@fiction/plugins/plugin-ai/index.js'
 import type { CardFactory } from '@fiction/site/cardFactory.js'
 import type { Card, CardConfigPortable, CardTemplate, TableCardConfig } from '@fiction/site/index.js'
@@ -11,7 +10,6 @@ import { EnvVar, vars } from '@fiction/core'
 import { FictionPlugin } from '@fiction/core/plugin.js'
 import { safeDirname, sortPriority, vue } from '@fiction/core/utils'
 import { cardTemplate } from '@fiction/site/index.js'
-import { getEmails } from './emails/index.js'
 
 export * from './tools/tools.js'
 export * from './types.js'
@@ -23,7 +21,6 @@ vars.register(() => [
 
 export type FictionAdminSettings = {
   fictionEmail: FictionEmail
-  fictionTransactions: FictionTransactions
   fictionUser: FictionUser
   fictionMedia: FictionMedia
   fictionApp: FictionApp
@@ -64,8 +61,6 @@ export class FictionAdmin extends FictionPlugin<FictionAdminSettings> {
       return true
     }
   }
-
-  emailActions = getEmails({ fictionAdmin: this })
 
   widgetLoaders = vue.shallowRef<WidgetLoader[]>([
     {

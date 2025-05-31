@@ -52,7 +52,7 @@ const list = vue.computed<SiteListItem[]>(() => {
   return getSiteIndexItemList(sites.value, props.card)
 })
 
-function getActions(location: 'top' | 'zero') {
+function getActions() {
   const buttons: ActionButton[] = [{
     testId: 'createSite',
     label: 'Create New Site',
@@ -60,7 +60,7 @@ function getActions(location: 'top' | 'zero') {
     theme: 'primary',
     onClick: () => (showCreateModal.value = true),
   }]
-  return location === 'zero' || list.value.length > 0 ? { buttons } : {}
+  return { buttons }
 }
 </script>
 
@@ -74,13 +74,12 @@ function getActions(location: 'top' | 'zero') {
         :index-meta="{}"
         :edit-actions="[]"
         :empty="{
-          title: 'Sites',
+          title: 'Create Your Site',
           subTitle: `The homebase for your online presence.`,
-          action: getActions('zero'),
           media: { class: 'i-tabler-browser-plus' },
         }"
         theme="primary"
-        :action="getActions('top')"
+        :action="getActions()"
         :on-item-click="() => {}"
         @bulk-edit="() => {}"
       >
@@ -89,18 +88,18 @@ function getActions(location: 'top' | 'zero') {
             <XLink
               :card
               :href="item.href"
-              class="group flex h-full overflow-hidden border border-theme-300/60 dark:border-theme-600/80 bg-white dark:bg-theme-800/40 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200"
+              class="group flex h-full overflow-hidden border border-theme-300/60 dark:border-theme-700/80 hover:dark:border-theme-600/80 bg-white dark:bg-theme-800/20 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200"
             >
-              <div class="flex flex-col gap-4 flex-grow p-4 basis-[350px] border-r border-theme-300/40 dark:border-theme-600/40">
+              <div class="flex flex-col gap-4 flex-grow p-4 md:p-6 basis-[60%] border-r border-theme-300/40 dark:border-theme-600/40">
                 <div class="flex items-start justify-between">
                   <div>
-                    <h3 class="font-semibold text-lg">
+                    <h3 class="font-semibold text-2xl">
                       {{ item.label }}
                     </h3>
                   </div>
                 </div>
 
-                <div class="mt-auto pt-3 flex items-center text-xs text-theme-400 dark:text-theme-500" title="Last updated">
+                <div class="flex items-center text-xs text-theme-400 dark:text-theme-500" title="Last updated">
                   <XButton
                     :href="item.href"
                     :theme="item.isPrimary ? 'primary' : 'default'"
@@ -114,7 +113,7 @@ function getActions(location: 'top' | 'zero') {
                 </div>
               </div>
 
-              <ElSitePreviewFrame :url="item.stagingUrl" class="aspect-square border-b border-theme-200 dark:border-theme-700" />
+              <ElSitePreviewFrame :url="item.stagingUrl" class="aspect-square border-b border-theme-200 dark:border-theme-700 w-96" />
             </XLink>
           </div>
         </template>

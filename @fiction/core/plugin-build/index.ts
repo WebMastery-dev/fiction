@@ -5,7 +5,7 @@ import type { FictionPluginSettings } from '../plugin.js'
 
 import process from 'node:process'
 import { FictionPlugin } from '../plugin.js'
-import { deepMergeAll, randomBetween, safeDirname } from '../utils/index.js'
+import { deepMergeAll, isCi, randomBetween, safeDirname } from '../utils/index.js'
 
 export * from './plugin-release.js'
 
@@ -185,11 +185,8 @@ export class FictionBuild extends FictionPlugin<FictionBuildSettings> {
       include: [
         'fast-safe-stringify',
         'path-browserify',
-        '@vue-email/components',
-        '@vue-email/render',
         '@shopify/draggable',
         '@tiptap/core',
-        '@tailwindcss/typography',
         'dayjs',
         'dayjs/plugin/timezone',
         'dayjs/plugin/utc',
