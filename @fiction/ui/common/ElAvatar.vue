@@ -3,6 +3,8 @@ import type { MediaObject, Organization, User } from '@fiction/core'
 import { gravatarUrlSync, vue } from '@fiction/core'
 import XMedia from '../media/XMedia.vue'
 
+defineOptions({ name: 'ElAvatar' })
+
 const {
   user,
   org,
@@ -69,7 +71,7 @@ const media = vue.computed<MediaObject>(() => {
       :media="media"
     />
     <div
-      class="absolute inset-0 z-10 pointer-events-none ring-1 ring-inset rounded-full"
+      class="absolute inset-0 z-10 pointer-events-none ring-[.1em] ring-inset rounded-full"
       :class="mediaUrl ? 'ring-white' : 'ring-theme-400'"
     />
   </div>

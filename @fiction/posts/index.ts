@@ -5,8 +5,9 @@ import type { FictionAnalytics } from '@fiction/analytics'
 import type { FictionDb, FictionEmail, FictionMedia, FictionPluginSettings, FictionRevision, FictionRouter, FictionServer, FictionUser } from '@fiction/core'
 import type { FictionContact } from '@fiction/plugin-contact'
 import type { FictionAi } from '@fiction/plugins/plugin-ai'
+import type { FictionMonitor } from '@fiction/plugins/plugin-monitor'
 import type { FictionSites } from '@fiction/site'
-import { cardConfig, cardConfigCustom } from '@fiction/cards'
+import { cardConfigCustom } from '@fiction/cards'
 import { FictionPlugin, safeDirname, vue } from '@fiction/core'
 import { cardTemplate } from '@fiction/site/card.js'
 import { QueryManagePost } from './endpoint'
@@ -30,6 +31,7 @@ export type FictionPostsSettings = {
   fictionContact: FictionContact
   fictionSites: FictionSites
   fictionAi: FictionAi
+  fictionMonitor?: FictionMonitor
 } & FictionPluginSettings
 
 export * from './schema'

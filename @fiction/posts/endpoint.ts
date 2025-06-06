@@ -26,7 +26,7 @@ export abstract class PostsQuery extends Query<PostsQuerySettings> {
   }
 }
 
-export type WherePost = { postId?: string, slug?: string } & ({ postId: string } | { slug: string })
+export type WherePost = { postId?: string, slug?: string, orgId?: string } & ({ postId: string } | { slug: string, orgId: string })
 
 export type ManagePostParamsRequest =
   | { _action: 'create', fields: Partial<TablePostConfig>, defaultTitle?: string }
@@ -40,6 +40,7 @@ export type ManagePostParamsRequest =
   | { _action: 'restoreFromRevision', where: WherePost, revisionId: string }
   | { _action: 'emailSendTest', where: WherePost, testEmails: string[], maxEmails?: number }
   | { _action: 'generate', where?: WherePost, mode: 'outline' | 'full', fields: Partial<TablePostConfig>, orgId: string }
+  | { _action: 'view', where: WherePost }
 
 export type ManagePostParams = ManagePostParamsRequest & {
   userId?: string
@@ -90,6 +91,9 @@ export class QueryManagePost extends PostsQuery {
         break
       case 'generate':
         r = await this.generatePostContent(params, meta)
+        break
+      case 'view':
+        r = await this.viewPost(params, meta)
         break
       default:
         return { status: 'error', message: 'Invalid action' }
@@ -345,7 +349,7 @@ export class QueryManagePost extends PostsQuery {
       userId,
     }, { skipTimeCheck: !isAutosave })
 
-    await trackPostMetrics({ orgId, fictionPosts: this.settings.fictionPosts, post: finalPost }, meta)
+    await trackPostMetrics({ track: 'update', orgId, fictionPosts: this.settings.fictionPosts, post: finalPost }, meta)
 
     return { status: 'success', data: [finalPost], message: 'Post updated' }
   }
@@ -435,7 +439,7 @@ export class QueryManagePost extends PostsQuery {
 
     const final = await this.getPost({ _action: 'get', where: { postId, orgId }, orgId }, { ...meta, caller: 'createPost' })
 
-    await trackPostMetrics({ orgId, fictionPosts: this.settings.fictionPosts, post: final.data?.[0] }, meta)
+    await trackPostMetrics({ track: 'create', orgId, fictionPosts: this.settings.fictionPosts, post: final.data?.[0] }, meta)
 
     return { status: 'success', data: final.data, message: 'Post created', isNew: true }
   }
@@ -459,7 +463,7 @@ export class QueryManagePost extends PostsQuery {
 
     this.log.info('Post deleted', { data: { where } })
 
-    await trackPostMetrics({ orgId, fictionPosts: this.settings.fictionPosts }, meta)
+    await trackPostMetrics({ track: 'delete', orgId, fictionPosts: this.settings.fictionPosts }, meta)
 
     return { status: 'success', data: [post], message: 'Post deleted' }
   }
@@ -739,5 +743,15 @@ export class QueryManagePost extends PostsQuery {
         badlyFormattedEmails,
       },
     }
+  }
+
+  private async viewPost(params: ManagePostParams & { _action: 'view' }, _meta: EndpointMeta): Promise<ManagePostResponse> {
+    const { where } = params
+
+    await this.db()(t.posts)
+      .where(where)
+      .increment('viewCount', 1)
+
+    return { status: 'success', data: [] }
   }
 }

@@ -6,7 +6,7 @@ export const PostStatusSchema = z.enum(['draft', 'scheduled', 'processing', 'fai
 export type PostStatus = z.infer<typeof PostStatusSchema>
 export const ProgressStatusSchema = z.enum(['pending', 'requested', 'processing', 'ready', 'error', 'cancelled', 'skipped'])
 export type ProgressStatus = z.infer<typeof ProgressStatusSchema>
-export const SyndicateStatusSchema = z.enum(['active', 'unsubscribed', 'pending', 'complained', 'deleted', 'cleaned'])
+export const SyndicateStatusSchema = z.enum(['active', 'unsubscribed', 'pending', 'bounced', 'spam_complaint', 'blocked', 'deleted'])
 export type SyndicateStatus = z.infer<typeof SyndicateStatusSchema>
 
 export const ButtonColorThemeSchema = z.enum(colorThemeUser)
@@ -44,7 +44,7 @@ export type DecorationShape = z.infer<typeof DecorationShapeSchema>
 
 const MouseEventType = typeof MouseEvent !== 'undefined' ? MouseEvent : class {}
 
-export const ValidateCallbackSchema = functionSchema(z.function({ input: z.object({ reportValidity: z.boolean().optional() }), output: z.boolean() }))
+export const ValidateCallbackSchema = functionSchema(z.function({ input: [z.object({ reportValidity: z.boolean().optional() })], output: z.boolean() }))
 
 export const ClickCallbackContextSchema = z.object({
   validate: ValidateCallbackSchema.optional(),
@@ -61,20 +61,14 @@ export const ClickCallbackArgsSchema = z.object({
 
 export type ClickCallbackArgs = z.infer<typeof ClickCallbackArgsSchema>
 
-const myFunction = z.function({
-  input: [z.object({
-    name: z.string(),
-    age: z.number().int(),
-  })],
-  output: z.string(),
-})
-
 export const ClickHandlerSchema = functionSchema(z.function({
-  input: z.object({
-    event: z.instanceof(MouseEventType).optional(),
-    item: z.record(z.string(), z.any()).optional(),
-    props: z.record(z.string(), z.any()).optional(),
-    context: ClickCallbackContextSchema.optional(),
-  }),
+  input: [
+    z.object({
+      event: z.instanceof(MouseEventType).optional(),
+      item: z.record(z.string(), z.any()).optional(),
+      props: z.record(z.string(), z.any()).optional(),
+      context: ClickCallbackContextSchema.optional(),
+    }),
+  ],
   output: z.any(),
 }))

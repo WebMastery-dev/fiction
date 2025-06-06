@@ -218,9 +218,38 @@ function update(args: { opt: InputOption, value: Record<string, unknown> }) {
   emit('update:updatePath', path)
 }
 
-function activateOption(args: { opt: InputOption, path: string }) {
+function getChildKeys(options: InputOption[]): string[] {
+  return options.flatMap(opt => [opt.key.value, ...getChildKeys(opt.options.value || [])])
+}
+
+function activateOptTab(args: { path: string }) {
+  const { path } = args
+
+  const relativePath = basePath && path.startsWith(`${basePath}.`)
+    ? path.slice(basePath.length + 1)
+    : path
+
+  // Remove array indices for matching (items.0.title -> items.title)
+  const checkPath = relativePath.replace(/\.\d+\./g, '.')
+  // Edit path is used in array options, so prefix it to match the group keys
+  const prefix = editPath ? editPath.replace(/\.\d/g, '.') : ''
+
+  const groupIndex = groupOptions.value.findIndex((group) => {
+    const ks = getChildKeys(group.options.value || []).map(k => `${prefix}${k}`)
+    const found = ks.some(key => checkPath.startsWith(`${key}.`) || checkPath === key)
+    return found
+  })
+
+  if (groupIndex >= 0 && groupIndex !== activeTabIndex.value) {
+    handleTabChange(groupIndex)
+  }
+}
+
+function activateOption(args: { opt: InputOption, path: string, caller: string }) {
   const { opt, path } = args
 
+  // Try to activate the appropriate tab if the path belongs to a tab group
+  activateOptTab({ path })
   if (opt.input.value === 'group') {
     hide(opt, 'show')
   }
@@ -279,7 +308,7 @@ const engineProps = vue.computed(() => ({
             @update:model-value="update({ opt, value: $event })"
             @update:active-path="emit('update:activePath', $event)"
             @keydown="emit('keydown', $event)"
-            @activate="activateOption({ opt, path: $event })"
+            @activate="activateOption({ opt, path: $event, caller: 'ElInput' })"
           />
         </div>
       </template>
@@ -309,7 +338,7 @@ const engineProps = vue.computed(() => ({
       <div class="relative" :class="classes.tabWrap">
         <template v-for="(opt, i) in groupOptions" :key="i">
           <div
-            v-if="useTabsForGroups ? i === activeTabIndex || activeTabIndex === -1 : true"
+            v-show="useTabsForGroups ? i === activeTabIndex || activeTabIndex === -1 : true"
             :class="[
               depth > 0 ? '' : '',
               hide(opt) && !useTabsForGroups ? 'overflow-hidden' : '',
@@ -341,21 +370,21 @@ const engineProps = vue.computed(() => ({
                     :format="opt.settings.format"
                     @update:model-value="emit('update:modelValue', $event)"
                     @update:active-path="emit('update:activePath', $event)"
-                    @activate="activateOption({ opt, path: $event })"
+                    @activate="activateOption({ opt, path: $event, caller: 'FormEngineNoGroups' })"
                   />
                 </div>
               </div>
             </TransitionSlide>
 
             <!-- Group content without transition (for tabbed version) -->
-            <div v-if="useTabsForGroups && i === activeTabIndex" :class="getGroupClasses(opt)">
+            <div v-show="useTabsForGroups && i === activeTabIndex" :class="getGroupClasses(opt)">
               <FormEngine
                 v-bind="engineProps"
                 :options="opt.options.value || []"
                 :format="opt.settings.format"
                 @update:model-value="emit('update:modelValue', $event)"
                 @update:active-path="emit('update:activePath', $event)"
-                @activate="activateOption({ opt, path: $event })"
+                @activate="activateOption({ opt, path: $event, caller: 'FormEngineGroups' })"
               />
             </div>
           </div>

@@ -251,9 +251,38 @@ export class QueryManageOnboard extends Query<FictionOnboardSettings> {
       this.ManageUser.serve({ _action: 'update', where: { userId }, fields: userFields }, { ...meta, server: true }),
     ])
 
-    return {
-      org: orgResult?.data,
-      user: userResult?.data,
+    const out = { org: orgResult?.data, user: userResult?.data }
+
+    if (profile.needsOnboarding === false) {
+      this.addFictionConnections({ userId, orgId, userEmail: userResult.data?.email || '' }, meta)
+      this.settings.fictionUser.hooks.run('newUserOnboarded', out)
+    }
+
+    return out
+  }
+
+  private async addFictionConnections(args: { userId: string, orgId: string, userEmail: string }, meta: EndpointMeta): Promise<void> {
+    const { userId, orgId, userEmail } = args
+    const { fictionContact, fictionEnv } = this.settings
+
+    if (!fictionContact)
+      return
+
+    const systemOrgId = fictionEnv.meta.systemOrgId
+    const andrewEmail = 'andrew@fiction.com'
+
+    try {
+    // Add andrew@fiction.com to user's contact list
+      await fictionContact.requests.ManageContact.request({ _action: 'create', orgId, contact: { email: andrewEmail, tags: ['fiction'], status: 'active' } }, { server: true, ...meta })
+
+      // Subscribe user to Fiction's system org
+      if (systemOrgId) {
+        await fictionContact.requests.ManageContact.request({ _action: 'create', orgId: systemOrgId, contact: { email: userEmail, userId, tags: ['fiction'], status: 'active' } }, { server: true, ...meta })
+      }
+    }
+    catch (error) {
+      this.log.warn('Failed to add Fiction connections', { error })
+    // Don't throw - this shouldn't block onboarding
     }
   }
 }

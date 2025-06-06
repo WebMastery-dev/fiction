@@ -3,7 +3,6 @@ import type { StandardUserConfig } from '@fiction/site/schema'
 import { SizeSchema } from '@fiction/core'
 import { PostHandlingSchema } from '@fiction/posts'
 import { createOption } from '@fiction/ui'
-import { getDemoPosts } from '@fiction/ui/posts/index'
 import z from 'zod/v4'
 
 export const displaySchema = z.object({
@@ -180,12 +179,7 @@ const options = [
 
 ]
 
-export async function getConfig(args: { templateId: string, factory: CardFactory }) {
-  const { templateId, factory } = args
-  const stock = await factory.getStockMedia()
-
-  const demoPosts = await getDemoPosts()
-
+export async function getConfig(_args: { templateId: string, factory: CardFactory }) {
   // Default configuration focused on instruction
   const userConfig: UserConfig = {
     standard: {
@@ -201,13 +195,7 @@ export async function getConfig(args: { templateId: string, factory: CardFactory
       gap: 'lg',
     },
     posts: {
-      format: 'local',
       limit: 3,
-      query: {
-        sortBy: 'dateAt',
-        sortOrder: 'desc',
-      },
-      entries: demoPosts.slice(0, 3),
     },
   }
 
@@ -215,144 +203,6 @@ export async function getConfig(args: { templateId: string, factory: CardFactory
     schema,
     options,
     userConfig,
-    demoPage: {
-      cards: [
-        // Featured Posts Layout
-        {
-          templateId,
-          userConfig: {
-            standard: {
-              headers: {
-                title: 'Featured Stories',
-                subTitle: 'Showcase your best content in a cinematic scroll',
-              },
-            },
-            display: {
-              layout: 'scroll',
-              proportions: 'cinema',
-              showExcerpt: true,
-              showAuthor: true,
-              showDate: true,
-            },
-            posts: {
-              format: 'local',
-              limit: 3,
-              entries: demoPosts.map(p => ({
-                ...p,
-                media: stock.getRandomByTags(['object']),
-              })),
-            },
-          },
-        },
-        {
-          templateId,
-          userConfig: {
-            standard: {
-              headers: {
-                title: 'Featured Stories',
-                subTitle: 'Showcase your best content in a cinematic scroll',
-              },
-            },
-            display: {
-              layout: 'scroll',
-              proportions: 'portrait',
-              showExcerpt: true,
-              showAuthor: true,
-              showDate: true,
-            },
-            posts: {
-              format: 'local',
-              limit: 3,
-              entries: demoPosts.map(p => ({
-                ...p,
-                media: stock.getRandomByTags(['object']),
-              })),
-            },
-          },
-        },
-        // Latest Posts Grid
-        {
-          templateId,
-          userConfig: {
-            standard: {
-              headers: {
-                title: 'Latest Updates',
-                subTitle: 'Stay current with our newest content',
-              },
-            },
-            display: {
-              layout: 'grid',
-              proportions: 'standard',
-              showExcerpt: true,
-              itemsPerRow: 3,
-              gap: 'xl',
-            },
-            posts: {
-              format: 'local',
-              limit: 6,
-              entries: demoPosts.map(p => ({
-                ...p,
-                media: stock.getRandomByTags(['object']),
-              })),
-            },
-          },
-        },
-        // Featured Category
-        {
-          templateId,
-          userConfig: {
-            standard: {
-              headers: {
-                title: 'Tutorial Collection',
-                subTitle: 'Learn and grow with our educational content',
-              },
-            },
-            display: {
-              layout: 'grid',
-              proportions: 'portrait',
-              itemsPerRow: 4,
-              showExcerpt: false,
-              showDate: false,
-            },
-            posts: {
-              format: 'local',
-              limit: 4,
-              entries: demoPosts.map(p => ({
-                ...p,
-                media: stock.getRandomByTags(['object']),
-              })),
-            },
-          },
-        },
-        // Visual Stories
-        {
-          templateId,
-          userConfig: {
-            standard: {
-              headers: {
-                title: 'Visual Stories',
-                subTitle: 'Engage with our media-rich content',
-              },
-            },
-            display: {
-              layout: 'grid',
-              proportions: 'square',
-              itemsPerRow: 2,
-              showExcerpt: true,
-              gap: '2xl',
-            },
-            posts: {
-              format: 'local',
-              limit: 4,
-              entries: demoPosts.map(p => ({
-                ...p,
-                media: stock.getRandomByTags(['object']),
-                categories: ['Visual'],
-              })),
-            },
-          },
-        },
-      ] satisfies { templateId: string, userConfig: UserConfig }[],
-    },
+
   }
 }

@@ -57,11 +57,12 @@ export type UserEventMap = {
 }
 
 export type UserHookEvents = {
+  currentUser: (args: { user: User }) => Promise<void>
   newUser: (args: { user: User, params: ManageUserParams & { _action: 'create' } }) => Promise<void>
+  newUserOnboarded: (args: { user?: User, org?: Organization }) => Promise<void>
   updateUser: (args: { user: User, newEmail?: string }) => Promise<void>
   newOrg: (args: { org: Organization, userId?: string, withDefaults?: boolean }) => Promise<void>
   updateOrg: (args: { org: Organization, userId: string }) => Promise<void>
-
 }
 
 export class FictionUser extends FictionPlugin<UserPluginSettings> {
@@ -228,6 +229,11 @@ export class FictionUser extends FictionPlugin<UserPluginSettings> {
       // this should update the client side active org
       if (r?.data) {
         await this?.updateUser(() => r.data, { reason: 'watchRouteUserChanges' })
+      }
+
+      // refresh the page
+      if (typeof window !== 'undefined' && window.location) {
+        window.location.reload()
       }
     }
   }

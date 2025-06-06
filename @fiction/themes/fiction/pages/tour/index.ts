@@ -25,9 +25,9 @@ export async function getTourPage(args: { factory: CardFactory, stock: StockMedi
             userConfig: {
               items: [{
                 superTitle: {
-                  text: 'They\'re Already Judging',
+                  text: 'Why Fiction?',
                   theme: 'red',
-                  icon: { class: 'i-tabler-eye' },
+                  icon: { class: 'i-tabler-north-star' },
                 },
                 title: `They Looked You Up [@text_effect type=scribble]Before[/@text_effect] Coffee`,
                 subTitle: `That investor. That client. That date. They all did the same thing: searched your name. What did they find? Fiction controls that moment.`,
@@ -128,7 +128,7 @@ export async function getTourPage(args: { factory: CardFactory, stock: StockMedi
               items: [
 
                 {
-                  text: `<p>Every time someone Googles your name, they're making decisions about you</p>`,
+                  text: `<p>Personal branding is about managing your name—even if you don't own a business—in a world of misinformation.</p>`,
                   author: {
                     label: 'Tim Ferris',
                     media: { url: PersonFerris },

@@ -1,10 +1,10 @@
 import type { MapUserConfig } from '@fiction/cards/user/maps'
 import { cardConfig } from '@fiction/cards'
-import ImageAndrew from './img/ap.webp'
 import ImageOffice from './img/fiction-office.webp'
 import ImageGirlComputer from './img/girl-computer.webp'
-import ImageMorgan from './img/morgan.jpg'
 import ImagePro from './img/pro.webp'
+import ImageAndrew from './img/team-ap.webp'
+import ImageMorgan from './img/team-mj.webp'
 
 export async function getAboutPage() {
   const topHeroCard = cardConfig({
@@ -81,12 +81,13 @@ export async function getAboutPage() {
   const teamCard = cardConfig({
     templateId: 'cardPeopleV1',
     userConfig: {
-      subTitle: `Here to Make It Easy`,
-      title: `Meet Your Team`,
+
+      title: `Team`,
+      subTitle: 'Meet the Founders',
       items: [
         {
           title: 'Andrew Powers',
-          subTitle: 'Co-Founder / CEO',
+          subTitle: 'Co-Founder',
           content: 'Andrew obsesses over making Fiction intuitive, so you can focus on your story, not the tech.',
           media: {
             format: 'image',
@@ -103,7 +104,7 @@ export async function getAboutPage() {
         },
         {
           title: 'Morgan Jones',
-          subTitle: 'Co-Founder / Sales',
+          subTitle: 'Co-Founder',
           content: 'Morgan ensures your experience with Fiction is seamless, from start to stunning finish.',
           media: {
             format: 'image',

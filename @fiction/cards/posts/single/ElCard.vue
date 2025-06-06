@@ -5,7 +5,7 @@ import { useService, vue } from '@fiction/core'
 import { useSSRData } from '@fiction/core/utils/ssr'
 import { Post } from '@fiction/posts'
 import { getPost } from '@fiction/posts/utils/post'
-import PostSingle from '@fiction/ui/posts/PostSingle.vue'
+import PostSingle from '@fiction/ui/posts/classic/PostSingle.vue'
 import CardWrap from '../../CardWrap.vue'
 
 const { card } = defineProps<{ card: Card }>()
@@ -24,7 +24,7 @@ async function fetchSinglePost() {
   const result = await getPost({
     fictionPosts,
     orgId,
-    where: { slug },
+    where: { slug, orgId },
   })
 
   return result

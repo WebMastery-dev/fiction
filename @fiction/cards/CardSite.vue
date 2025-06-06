@@ -50,7 +50,7 @@ async function load() {
       siteRouter,
       fictionSites,
       mountContext: mountContext.value,
-      caller: `CardSite-loadSite(${props.themeId || 'no-theme-id'}):${currentUrl}:HEADERS${runVars?.ALL_HEADERS}`,
+      caller: `CardSite-loadSite:${currentUrl}`,
     })
 
     return s
@@ -96,7 +96,7 @@ function getTitleTag() {
   if (seoConfig?.title)
     return seoConfig.title
 
-  const titleTemplate = siteConfig.value.titleTemplate || '{{pageTitle}}'
+  const titleTemplate = siteConfig.value.titleTemplate || '{{pageTitle}} - {{siteTitle}}'
   const siteTitle = org.value?.orgName || ''
   const pageTitle = page.value?.title?.value || toLabel(page.value?.slug?.value) || ''
 
@@ -202,34 +202,42 @@ fictionEnv.events.on('cleanup', () => {
 })
 
 vue.onMounted(async () => {
-  vue.watchEffect(() => {
-    if (typeof document === 'undefined')
-      return
+  vue.watch(
+    () => site.value?.siteFonts.value,
+    (fonts) => {
+      const stacks = fonts?.stacks || {}
+      const fontsUrl = fonts?.fontsUrl || ''
+      for (const stack in stacks) {
+        const stackFonts = (stacks[stack] || '').replaceAll('+', ' ')
+        document.documentElement.style.setProperty(`--font-family-${stack}`, stackFonts)
+      }
 
-    const clr = colors.value
-    const th = clr.themeHex
-    const prm = clr.primaryHex
-    const fn = fonts.value
-    Object.entries(th).forEach(([k, v]) => {
-      document.documentElement.style.setProperty(`--theme-${k}`, v)
-    })
-    Object.entries(prm).forEach(([k, v]) => {
-      document.documentElement.style.setProperty(`--primary-${k}`, v)
-    })
+      // Update Google Fonts link
+      const fontLink = document.getElementById('font-link') as HTMLLinkElement
+      if (fontLink && fontsUrl) {
+        fontLink.href = fontsUrl
+      }
+    },
+    { immediate: true },
+  )
+  vue.watch(
+    () => colors.value,
+    (colors) => {
+      if (!colors)
+        return
 
-    const stacks = fn?.stacks || {}
-    const fontsUrl = fn?.fontsUrl || ''
-    for (const stack in stacks) {
-      const stackFonts = (stacks[stack] || '').replaceAll('+', ' ')
-      document.documentElement.style.setProperty(`--font-family-${stack}`, stackFonts)
-    }
+      const primaryColor = colors.primaryHex || {}
+      const themeColor = colors.themeHex || {}
 
-    // Update Google Fonts link
-    const fontLink = document.getElementById('font-link') as HTMLLinkElement
-    if (fontLink && fontsUrl) {
-      fontLink.href = fontsUrl
-    }
-  })
+      Object.entries(primaryColor).forEach(([k, v]) => {
+        document.documentElement.style.setProperty(`--primary-${k}`, v)
+      })
+      Object.entries(themeColor).forEach(([k, v]) => {
+        document.documentElement.style.setProperty(`--theme-${k}`, v)
+      })
+    },
+    { immediate: true },
+  )
 })
 </script>
 
@@ -312,6 +320,9 @@ body,
     // &.font-medium {
     //   font-weight: var(--font-weight-title, 500);
     // }
+  }
+  .x-font-entry {
+    font-family: var(--font-family-entry, unset);
   }
   .x-font-highlight {
     font-family: var(--font-family-highlight, unset);

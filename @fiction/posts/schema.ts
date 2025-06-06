@@ -1,6 +1,6 @@
 import type { ColType, ComplexDataFilter, Organization, User } from '@fiction/core'
 import type { StandardUserConfig } from '@fiction/site/schema'
-import { ColorThemeUserSchema, MediaSchema, OrFilterGroupSchema, PostStatusSchema, standardTable, toSlug } from '@fiction/core'
+import { ActionAreaSchema, ColorThemeUserSchema, MediaSchema, OrFilterGroupSchema, PostStatusSchema, standardTable, toSlug } from '@fiction/core'
 import { Col, FictionDbTable } from '@fiction/core/plugin-db'
 import { t as siteTables } from '@fiction/site/tables'
 import { z } from 'zod/v4'
@@ -22,6 +22,7 @@ export type TablePostConfig = Partial<ColType<typeof postCols>> & {
   authors?: User[]
   likeCount?: number
   commentCount?: number
+  comments?: TableCommentConfig[]
   draftId?: string
   org?: Organization
   relatedPosts?: {
@@ -58,7 +59,7 @@ export const EmailConfigSchema = z.object({
   preview: z.string().optional(),
 
   // Audience settings
-  target: z.enum(['all', 'filtered', 'nobody']).default('all'),
+  target: z.enum(['all', 'filtered', 'nobody']).optional(),
   filters: z.array(z.custom<ComplexDataFilter>()).optional(),
   testEmails: z.array(z.string()).optional(),
 
@@ -106,6 +107,7 @@ export const postCols = [
   new Col({ key: 'subTitle', sec: 'setting', sch: () => z.string(), make: ({ s, col }) => s.text(col.k).defaultTo('') }),
   new Col({ key: 'content', sec: 'setting', sch: () => z.string(), make: ({ s, col }) => s.text(col.k).defaultTo('') }),
   new Col({ key: 'media', sec: 'setting', sch: () => MediaSchema, make: ({ s, col }) => s.jsonb(col.k).defaultTo({}) }),
+  new Col({ key: 'action', sec: 'setting', sch: () => ActionAreaSchema, make: ({ s, col }) => s.jsonb(col.k).defaultTo({}) }),
   new Col({ key: 'theme', sec: 'setting', sch: () => ColorThemeUserSchema, make: ({ s, col }) => s.string(col.k) }),
   new Col({ key: 'userConfig', sec: 'setting', sch: () => z.record(z.string(), z.unknown()) as z.Schema<PostUserConfig>, make: ({ s, col }) => s.jsonb(col.k).defaultTo({}) }),
   new Col({ key: 'hasChanges', sec: 'setting', sch: () => z.boolean(), make: ({ s, col }) => s.boolean(col.k).defaultTo(false) }),
@@ -137,6 +139,8 @@ export const postCols = [
   new Col({ key: 'wordCount', sec: 'setting', sch: () => z.number().int(), make: ({ s, col }) => s.integer(col.k).defaultTo(0) }),
   new Col({ key: 'likeCount', sec: 'setting', sch: () => z.number().int(), make: ({ s, col }) => s.integer(col.k).defaultTo(0) }),
   new Col({ key: 'commentCount', sec: 'setting', sch: () => z.number().int(), make: ({ s, col }) => s.integer(col.k).defaultTo(0) }),
+  new Col({ key: 'viewCount', sec: 'setting', sch: () => z.number().int(), make: ({ s, col }) => s.integer(col.k).defaultTo(0) }),
+
 ] as const
 
 export const postAuthorCols = [

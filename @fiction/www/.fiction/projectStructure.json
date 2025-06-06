@@ -203,7 +203,12 @@
       "posts": {
         "blog": {
           "ElMagazine.vue": null,
+          "PostComments.vue": null,
+          "PostIndex.vue": null,
+          "PostSingle.vue": null,
+          "avatar.jpg": null,
           "config.ts": null,
+          "demo.vue": null,
           "img": {
             "screen-dark.svg": null,
             "screen-light.svg": null
@@ -274,6 +279,12 @@
           "ElCard.vue": null,
           "index.ts": null
         },
+        "manage": {
+          "XCard.vue": null,
+          "__XCard copy.vue": null,
+          "index.ts": null,
+          "manage.uiux.test.ts": null
+        },
         "mediaModal": {
           "ElCard.vue": null,
           "config.ts": null,
@@ -285,6 +296,11 @@
         },
         "nav": {
           "ElCard.vue": null,
+          "NavMobile.vue": null,
+          "NavMobileItem.vue": null,
+          "NavMobilePanel.vue": null,
+          "SubscribeButton.vue": null,
+          "__UserMenu.vue": null,
           "config.ts": null,
           "img": {
             "screen-dark.svg": null,
@@ -561,13 +577,13 @@
       },
       "utils": {
         "__generateStructure.ts": null,
+        "__nav.ts": null,
         "head.ts": null,
         "icon.ts": null,
         "img": {
           "screen-dark.svg": null,
           "screen-light.svg": null
         },
-        "nav.ts": null,
         "test": {
           "head.unit.test.ts": null,
           "icon.unit.test.ts": null
@@ -587,7 +603,6 @@
       },
       "plugin-app": {
         "ElRoot.vue": null,
-        "app.css": null,
         "hooks.ts": null,
         "index.ts": null,
         "mount.ts": null,
@@ -982,7 +997,7 @@
       "index.ts": null,
       "package.json": null,
       "test": {
-        "onboard.spot.test.ts": null,
+        "onboard.uiux.test.ts": null,
         "onboardEndpoint.unit.test.ts": null
       },
       "util.ts": null
@@ -1115,6 +1130,7 @@
       "test": {
         "endpoint.unit.test.ts": null,
         "endpointMeta.test.ts": null,
+        "endpointView.unit.test.ts": null,
         "postAuthors.unit.test.ts": null,
         "postEditing.flow.test.ts": null,
         "postLoader.unit.test.ts": null,
@@ -1194,7 +1210,7 @@
       "tailwind.config.cjs": null,
       "test": {
         "__cert.unit.test.ts": null,
-        "admin.siteEditing.uiux.test.ts": null,
+        "admin.siteEditing.spot.test.ts": null,
         "admin.sitePages.uiux.test.ts": null,
         "card.ai.test.ts": null,
         "card.unit.test.ts": null,
@@ -1259,6 +1275,24 @@
       }
     },
     "themes": {
+      "__minimal": {
+        "config.ts": null,
+        "img": {
+          "dark-desktop.png": null,
+          "light-desktop.png": null
+        },
+        "index.ts": null,
+        "package.json": null
+      },
+      "__prestige": {
+        "config.ts": null,
+        "img": {
+          "dark-desktop.png": null,
+          "light-desktop.png": null
+        },
+        "index.ts": null,
+        "package.json": null
+      },
       "base": {
         "img": {
           "dark-desktop.png": null,
@@ -1276,6 +1310,10 @@
         }
       },
       "fiction": {
+        "__demos": {
+          "DemoGrid.vue": null,
+          "index.ts": null
+        },
         "affiliate": {
           "el": {
             "ElCard.vue": null,
@@ -1284,10 +1322,6 @@
           "index.ts": null
         },
         "config.ts": null,
-        "demos": {
-          "DemoGrid.vue": null,
-          "index.ts": null
-        },
         "developer": {
           "el": {
             "ElBenefits.vue": null,
@@ -1365,13 +1399,14 @@
         "pages": {
           "about": {
             "img": {
-              "ap.webp": null,
               "fiction-office.webp": null,
               "girl-computer.webp": null,
               "morgan.jpg": null,
               "people2.webp": null,
               "pro.webp": null,
-              "spectrum.jpg": null
+              "spectrum.jpg": null,
+              "team-ap.webp": null,
+              "team-mj.webp": null
             },
             "index.ts": null
           },
@@ -1393,6 +1428,7 @@
               "fig-subscribe-screen.svg": null,
               "fig-website-alt-1.svg": null,
               "fig-website-screen.svg": null,
+              "invisible.png": null,
               "man-smiling.png": null,
               "meeting.png": null,
               "person-brene.webp": null,
@@ -1427,24 +1463,6 @@
           "profile-woman-9.png": null
         },
         "templates.ts": null
-      },
-      "minimal": {
-        "config.ts": null,
-        "img": {
-          "dark-desktop.png": null,
-          "light-desktop.png": null
-        },
-        "index.ts": null,
-        "package.json": null
-      },
-      "prestige": {
-        "config.ts": null,
-        "img": {
-          "dark-desktop.png": null,
-          "light-desktop.png": null
-        },
-        "index.ts": null,
-        "package.json": null
       }
     },
     "ui": {
@@ -1501,6 +1519,7 @@
         "XNumber.vue": null,
         "XSuperTitle.vue": null,
         "XText.vue": null,
+        "XTextPath.vue": null,
         "user-blank.png": null,
         "user.svg": null
       },
@@ -1651,13 +1670,6 @@
         "ElModalConfirm.vue": null,
         "SuccessModal.vue": null
       },
-      "nav": {
-        "NavMobile.vue": null,
-        "NavMobileItem.vue": null,
-        "NavMobilePanel.vue": null,
-        "UserMenu.vue": null,
-        "navUtils.ts": null
-      },
       "notify": {
         "NotifyToaster.vue": null
       },
@@ -1666,23 +1678,17 @@
         "El404.vue": null
       },
       "posts": {
-        "DemoPostIndex.vue": null,
-        "DemoPostSingle.vue": null,
-        "PostFeature.vue": null,
-        "PostHero.vue": null,
-        "PostIndexLayout.vue": null,
-        "PostItem.vue": null,
-        "PostItemMeta.vue": null,
-        "PostSingle.vue": null,
-        "XPostAuthor.vue": null,
-        "__PostIndex.vue": null,
-        "index.ts": null,
-        "sidebar": {
-          "SidebarMediaItem.vue": null,
-          "SidebarWidget.vue": null,
-          "XWidgetAbout.vue": null,
-          "XWidgetPosts.vue": null
-        }
+        "classic": {
+          "DemoPostIndex.vue": null,
+          "DemoPostSingle.vue": null,
+          "PostFeature.vue": null,
+          "PostIndexLayout.vue": null,
+          "PostItem.vue": null,
+          "PostItemMeta.vue": null,
+          "PostSingle.vue": null,
+          "XPostAuthor.vue": null
+        },
+        "index.ts": null
       },
       "prose": {
         "XEntry.vue": null,
