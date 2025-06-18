@@ -2,7 +2,8 @@ import type { EmailSendConfig } from '../plugin-email'
 import type { EmailVars } from '../plugin-email/vars'
 import type { EndpointResponse } from '../types'
 import type { EndpointMeta } from '../utils'
-import type { FictionUser, User } from './index.js'
+import type { CreateUserFields } from './endpoint'
+import type { FictionUser } from './index.js'
 import { createEmailVars } from '../plugin-email/vars'
 import { abort } from '../utils'
 import { UserBaseQuery } from './endpoint'
@@ -16,7 +17,7 @@ export type ManageUserEmailParams = {
   targetOrgId?: string
   tags?: string[]
   queryVars?: Record<string, string>
-  createUserFields?: Partial<User>
+  createUserFields?: Partial<CreateUserFields>
   caller: string
 }
 
@@ -92,7 +93,7 @@ async function getOrganization(orgId: string, fictionUser: FictionUser) {
 
 function getEmailConfig(_action: EmailAction, vars: EmailVars, org?: any) {
   const { appName, code, callbackUrl } = vars
-  const orgName = org?.orgName || appName
+  const name = org?.name || appName
   const btn = (label: string) => [{ label, href: callbackUrl, theme: 'primary' as const }]
 
   const emails: Record<EmailAction, Omit<EmailSendConfig, 'caller' | 'to'>> = {
@@ -114,17 +115,17 @@ function getEmailConfig(_action: EmailAction, vars: EmailVars, org?: any) {
       subject: `${appName}: Your code is ${code}`,
       title: 'Your verification code',
       subTitle: 'Use this code to verify your account',
-      content: `Verify your account with this code:<br><br><h2>${code}</h2>`,
+      content: `Verify your account with this code:<h2>${code}</h2>`,
     },
     verifySubscribe: {
-      subject: `${orgName}: Confirm your subscription`,
+      subject: `${name}: Confirm your subscription`,
       title: 'Confirm Your Subscription',
       subTitle: 'Just click to complete',
-      content: `Click the button to confirm you'd like to follow <strong>${orgName}</strong>.`,
+      content: `Click the button to confirm you'd like to follow <strong>${name}</strong>.`,
       buttons: btn('Confirm'),
-      senderName: orgName,
-      senderEmail: org?.orgEmail,
-      superTitle: org && { text: orgName, icon: org.avatar },
+      senderName: name,
+      senderEmail: org?.email,
+      superTitle: org && { text: name, icon: org.avatar },
     },
   }
 

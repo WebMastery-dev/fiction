@@ -2,38 +2,43 @@
 import type { EndpointResponse, FictionUser, StepActions, StepConfig, StepItem } from '@fiction/core'
 import type { Card } from '@fiction/site'
 import type { FictionOnboard } from '.'
-
 import type { ProfileData } from './util'
+
 import ElSavingSignal from '@fiction/admin/el/ElSavingSignal.vue'
-import { useService, vue } from '@fiction/core'
+import { deepMerge, pathCheck, setNested, useService, vue } from '@fiction/core'
 import { getArchetypesStyles, getImageStyles } from '@fiction/core/schemas/motifs'
 import { AutosaveUtility } from '@fiction/core/utils/save'
 import ElStepNav from '@fiction/ui/ElStepNav.vue'
 import ElInput from '@fiction/ui/inputs/ElInput.vue'
 import XProgress from '@fiction/ui/loaders/XProgress.vue'
-import XMedia from '@fiction/ui/media/XMedia.vue'
+import XLogoType from '@fiction/ui/media/XLogoType.vue'
 import { localMedia } from '@fiction/ui/stock/localMedia'
-import { profileFromAccount } from './util'
+import { profileFromAccount, ProfileDataSchema as schema } from './util'
 
 const { card } = defineProps<{ card: Card }>()
 
 const { fictionUser, fictionOnboard, fictionEnv } = useService<{ fictionUser: FictionUser, fictionOnboard: FictionOnboard }>()
 
 const profile = vue.ref<ProfileData>({
-  needsOnboarding: true,
-  linkedinHandle: '',
+  onboard: { phase: 'initial' },
+  accounts: {
+    linkedin: {
+      handle: '',
+    },
+  },
   name: '',
   handle: '',
-  headline: '',
-  about: '',
-  goal: '',
-  postTitles: [],
-  interests: [],
-  influences: [],
+  profile: {
+    headline: '',
+    summary: '',
+    goal: '',
+    interests: [],
+    influences: [],
+  },
+  branding: { },
   avatar: undefined,
   promptImageKey: 'swissPrecision',
   promptContentKey: 'hero',
-  primaryColor: 'blue',
 })
 
 vue.onMounted(async () => {
@@ -43,11 +48,11 @@ vue.onMounted(async () => {
 
   const routeLinkedinHandle = card.site?.siteRouter.query.value.li as string || undefined
 
-  profile.value = {
-    ...profile.value,
-    ...p,
-    linkedinHandle: routeLinkedinHandle || p.linkedinHandle,
-  }
+  profile.value = deepMerge([
+    profile.value,
+    p,
+    { accounts: { linkedin: { handle: routeLinkedinHandle } } },
+  ])
 })
 
 type StepKey = 'linkedin' | 'account' | 'profile' | 'interests' | 'content' | 'generate' | 'ready' | 'enrich' | 'branding'
@@ -86,7 +91,7 @@ async function performLinkedInEnrichment(args: StepActions<StepKey>) {
 
   const p = profile.value
 
-  if (!p.linkedinHandle) {
+  if (!p.accounts?.linkedin?.handle) {
     return resetOnboard({ message: 'No LinkedIn URL provided', data: p, stepActions: args })
   }
 
@@ -212,7 +217,7 @@ const stepConfig: StepConfig<StepKey> = {
         isLoading: isLoading.value === 'account',
         onClick: async (args) => {
           const { changeStep } = args
-          await saveUtil.forceSync()
+          saveUtil.forceSync()
           changeStep({ dir: 'next' })
         },
       },
@@ -228,7 +233,7 @@ const stepConfig: StepConfig<StepKey> = {
         allowSkip: false,
         onClick: async (args) => {
           const { changeStep } = args
-          await saveUtil.forceSync()
+          saveUtil.forceSync()
           changeStep({ dir: 'next' })
         },
       },
@@ -244,7 +249,7 @@ const stepConfig: StepConfig<StepKey> = {
         allowSkip: false,
         onClick: async (args) => {
           const { changeStep } = args
-          await saveUtil.forceSync()
+          saveUtil.forceSync()
           changeStep({ dir: 'next' })
         },
       },
@@ -260,7 +265,7 @@ const stepConfig: StepConfig<StepKey> = {
         allowSkip: false,
         onClick: async (args) => {
           const { changeStep } = args
-          await saveUtil.forceSync()
+          saveUtil.forceSync()
           changeStep({ dir: 'next' })
         },
       },
@@ -288,13 +293,12 @@ const stepConfig: StepConfig<StepKey> = {
           theme: 'green',
           icon: { class: 'i-tabler-bolt' },
         },
-        title: 'You\'re All Set!',
-        subTitle: 'An incredible future awaits. Let\'s begin...',
+        title: 'Your profile is ready!',
+        subTitle: 'Excited? Let\'s begin...',
         button: {
           label: 'Go to Dashboard',
           theme: 'primary',
           size: 'lg',
-          icon: 'i-tabler-bolt',
           iconAfter: 'i-tabler-arrow-right',
         },
         class: 'max-w-lg',
@@ -302,12 +306,7 @@ const stepConfig: StepConfig<StepKey> = {
         onClick: async () => {
           isLoading.value = 'ready'
           try {
-            profile.value.needsOnboarding = false
-            const r = await saveUtil.forceSync()
-
-            if (r?.status === 'success') {
-              await card.goto('/?_view=welcome')
-            }
+            await card.goto('/?_view=welcome')
           }
           finally {
             isLoading.value = ''
@@ -327,7 +326,12 @@ const stepConfig: StepConfig<StepKey> = {
   >
     <div class="fixed inset-0 z-10 overflow-y-auto">
       <div class="text-white absolute py-4 md:py-8 px-4 md:px-16 w-full flex justify-between">
-        <XMedia class="h-[35px]" :media="localMedia.fictionIconInline" />
+        <div>
+          <XLogoType
+            :logo="{ variant: 'media', media: localMedia.fictionIconInline }"
+            :media-handling="{ height: 2 }"
+          />
+        </div>
         <ElSavingSignal change-type="publish" :is-dirty="saveUtil.isDirty.value" />
       </div>
       <div
@@ -342,13 +346,14 @@ const stepConfig: StepConfig<StepKey> = {
           <!-- LinkedIn URL step -->
           <div v-if="step.key === 'linkedin'" class="space-y-6">
             <ElInput
-              v-model="profile.linkedinHandle"
+              :model-value="profile.accounts?.linkedin?.handle"
               input="InputHandle"
               placeholder="username"
               ui-size="lg"
               required
               :input-props="{ autofocus: true, beforeInput: 'linkedin.com/in/' }"
               data-test-id="linkedinHandle"
+              @update:model-value="profile = setNested({ data: profile, path: pathCheck('accounts.linkedin.handle', schema), value: $event })"
             />
           </div>
 
@@ -401,53 +406,58 @@ const stepConfig: StepConfig<StepKey> = {
           <!-- Profile step -->
           <div v-if="step.key === 'profile'" class="space-y-6">
             <ElInput
-              v-model="profile.headline"
+              :model-value="profile.profile?.headline"
               input="InputText"
-              label="Headline"
+              label="Profile Headline"
               placeholder="Leader and innovator."
               description="A concise description of what you do"
               data-test-id="headline"
+              @update:model-value="profile = setNested({ data: profile, path: pathCheck('profile.headline', schema), value: $event })"
             />
 
             <ElInput
-              v-model="profile.about"
+              :model-value="profile.profile?.summary"
               input="InputTextarea"
-              label="About"
+              label="Summary"
               placeholder="A brief description of yourself"
               :input-props="{ rows: 5 }"
               data-test-id="about"
+              @update:model-value="profile = setNested({ data: profile, path: pathCheck('profile.summary', schema), value: $event })"
             />
           </div>
           <div v-if="step.key === 'interests'" class="space-y-6">
             <ElInput
-              v-model="profile.interests"
+              :model-value="profile.profile?.interests"
               input="InputTags"
               label="Interests"
               placeholder="Add interests"
               description="Topics you're passionate about (e.g., Design, Marketing, AI, Politics)"
               data-test-id="interests"
+              @update:model-value="profile = setNested({ data: profile, path: pathCheck('profile.interests', schema), value: $event })"
             />
 
             <ElInput
-              v-model="profile.influences"
+              :model-value="profile.profile?.influences"
               input="InputTags"
               label="Role Models"
               placeholder="Add influences"
               description="People, characters, or systems that inspire your style"
               data-test-id="influences"
+              @update:model-value="profile = setNested({ data: profile, path: pathCheck('profile.influences', schema), value: $event })"
             />
           </div>
           <div v-if="step.key === 'branding'" class="space-y-6">
             <ElInput
-              v-model="profile.promise"
+              :model-value="profile.profile?.hero"
               input="InputText"
-              label="Your Content Promise"
-              placeholder="Write your promise headline"
-              description="A 2-4 word tagline for the value you provide (e.g. 'Learn to code')"
+              label="Hero Title"
+              placeholder="Write your hero title"
+              description="A 2-4 word hero title to hook visitors (e.g. 'Learn to code')"
               data-test-id="promise"
+              @update:model-value="profile = setNested({ data: profile, path: pathCheck('profile.hero', schema), value: $event })"
             />
             <ElInput
-              v-model="profile.primaryColor"
+              :model-value="profile.branding?.primaryColor"
               input="InputColorTheme"
               label="Primary Color"
               description="The main color for your brand"
@@ -456,6 +466,7 @@ const stepConfig: StepConfig<StepKey> = {
               }"
               required
               data-test-id="primaryColor"
+              @update:model-value="profile = setNested({ data: profile, path: pathCheck('branding.primaryColor', schema), value: $event })"
             />
 
             <ElInput

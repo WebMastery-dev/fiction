@@ -1,8 +1,8 @@
-import type { EndpointMeta, EndpointResponse, MediaObject } from '@fiction/core'
+import type { EndpointMeta, EndpointResponse, MediaObject, Organization, User } from '@fiction/core'
 import type { FictionOnboardSettings } from '.'
 import type { AiEnhancement } from './generation'
 import type { LinkedInEnrichmentProfile, ProfileData } from './util'
-import { abort, Query } from '@fiction/core'
+import { abort, deepMerge, isTest, Query } from '@fiction/core'
 import { AiEnhancementSchema, getGenerationParams } from './generation'
 import { accountFromProfile, createHandle, getMockLinkedInData, profileFromAccount } from './util'
 
@@ -10,6 +10,7 @@ export type OnboardRequest =
   | { _action: 'enrichFromLinkedIn', userId: string, orgId: string, profile: Partial<ProfileData> }
   | { _action: 'updateProfile', userId: string, orgId: string, profile: Partial<ProfileData> }
   | { _action: 'createDefaultContent', userId: string, orgId: string, profile: Partial<ProfileData> }
+  | { _action: 'completeOnboarding', userId: string, orgId: string, profile: Partial<ProfileData> }
 
 export class QueryManageOnboard extends Query<FictionOnboardSettings> {
   enrichCount = 0
@@ -25,6 +26,8 @@ export class QueryManageOnboard extends Query<FictionOnboardSettings> {
           return await this.handleUpdateProfile(params, meta)
         case 'createDefaultContent':
           return await this.handleCreateDefaultContent(params, meta)
+        case 'completeOnboarding':
+          return await this.completeOnboarding(params, meta)
         default:
           throw abort('Invalid action')
       }
@@ -61,17 +64,14 @@ export class QueryManageOnboard extends Query<FictionOnboardSettings> {
           _action: 'create',
           orgId,
           userId,
-          fields: {
-            title: profile.name,
-            isPrimary: true,
-          },
+          fields: { title: profile.name, isPrimary: true },
           caller: 'createDefaultContent',
         }, { server: true, ...meta }),
       )
 
-      const results = await Promise.all(_promises)
+      await Promise.all(_promises)
 
-      return { status: 'success', data: profile as ProfileData, results }
+      return await this.completeOnboarding({ userId, orgId }, meta)
     }
     catch (error) {
       this.log.error('Failed to create default content', { error })
@@ -85,7 +85,7 @@ export class QueryManageOnboard extends Query<FictionOnboardSettings> {
   ): Promise<EndpointResponse<ProfileData>> {
     const { userId, orgId, profile } = params
 
-    const { linkedinHandle } = params.profile
+    const linkedinHandle = params.profile.accounts?.linkedin?.handle
 
     if (!linkedinHandle)
       throw abort('LinkedIn handle is required')
@@ -95,13 +95,13 @@ export class QueryManageOnboard extends Query<FictionOnboardSettings> {
     }
 
     // Use mock data for test handles or when ProxyCurl API key is missing
-    const isTest = !!((linkedinHandle?.toLowerCase().includes('test')))
+    const isTesting = !!((linkedinHandle?.toLowerCase().includes('test')))
 
-    const linkedinData = await this.fetchLinkedInProfile({ linkedinHandle, isTest })
+    const linkedinData = await this.fetchLinkedInProfile({ linkedinHandle, isTesting })
     if (!linkedinData)
       return { status: 'error', message: 'Failed to fetch LinkedIn profile' }
 
-    const returnProfile = await this.buildProfileFromLinkedinData({ linkedinData, userId, orgId, isTest })
+    const returnProfile = await this.buildProfileFromLinkedinData({ linkedinData, userId, orgId, isTesting })
     await this.updateProfileData({ profile, userId, orgId }, meta)
 
     this.log.info('Profile enriched', { data: returnProfile })
@@ -125,16 +125,18 @@ export class QueryManageOnboard extends Query<FictionOnboardSettings> {
     }
   }
 
-  private async fetchLinkedInProfile(args: { linkedinHandle?: string, isTest?: boolean }): Promise<LinkedInEnrichmentProfile> {
-    const { linkedinHandle, isTest } = args
+  async fetchLinkedInProfile(args: { linkedinHandle?: string, isTesting?: boolean }): Promise<LinkedInEnrichmentProfile> {
+    const { linkedinHandle } = args
     if (!linkedinHandle) {
       throw new Error('linkedin username is missing')
     }
 
+    const isTesting = args.isTesting || isTest()
+
     const url = linkedinHandle.includes('linkedin.com') ? linkedinHandle : `https://www.linkedin.com/in/${linkedinHandle}`
 
     // Use mock data for test handles or when ProxyCurl API key is missing
-    if (isTest) {
+    if (isTesting) {
       this.log.info('Using mock data for test handle or missing API key', { handle: linkedinHandle })
       return getMockLinkedInData(url)
     }
@@ -158,50 +160,61 @@ export class QueryManageOnboard extends Query<FictionOnboardSettings> {
     }
   }
 
-  private async buildProfileFromLinkedinData(args: { linkedinData: LinkedInEnrichmentProfile, userId: string, orgId: string, isTest?: boolean }): Promise<ProfileData> {
-    const { orgId, userId, linkedinData, isTest } = args
+  private async buildProfileFromLinkedinData(args: { linkedinData: LinkedInEnrichmentProfile, userId: string, orgId: string, isTesting?: boolean }): Promise<ProfileData> {
+    const { orgId, userId, linkedinData, isTesting } = args
     const name = linkedinData.full_name || ''
     const handle = linkedinData.public_identifier || createHandle(name)
     const avatarUrl = linkedinData.profile_pic_url || ''
 
-    const aiEnhancement = await this.enhanceProfileWithAi({ linkedinData, orgId, userId, isTest })
+    const aiEnhancement = await this.enhanceProfileWithAi({ linkedinData, orgId, userId, isTesting })
     const avatar = avatarUrl ? await this.processAvatarToMedia({ url: avatarUrl }, orgId, userId) : undefined
 
-    return {
+    const enrichData = {
       name,
       handle,
-      industry: linkedinData.industry,
-      city: linkedinData?.city,
-      state: linkedinData?.state,
-      country: linkedinData?.country,
+      profile: {
+        industry: linkedinData.industry || '',
+      },
+      location: {
+        city: linkedinData?.city || '',
+        state: linkedinData?.state || '',
+        country: linkedinData?.country || '',
+      },
       avatar,
-      linkedinFollowers: linkedinData.follower_count,
-      linkedinHandle: linkedinData.public_identifier,
-      ...aiEnhancement,
+      accounts: {
+        linkedin: {
+          handle,
+          followerCount: linkedinData.follower_count || 0,
+        },
+      },
     }
+
+    return deepMerge([enrichData, aiEnhancement])
   }
 
-  private async enhanceProfileWithAi(args: { linkedinData: LinkedInEnrichmentProfile, orgId: string, userId: string, isTest?: boolean }): Promise<AiEnhancement> {
-    const { orgId, userId, linkedinData, isTest } = args
+  private async enhanceProfileWithAi(args: { linkedinData: LinkedInEnrichmentProfile, orgId: string, userId: string, isTesting?: boolean }): Promise<AiEnhancement> {
+    const { orgId, userId, linkedinData, isTesting } = args
     const params = getGenerationParams({ linkedinData })
 
-    const getDefaultData = () => {
+    const getMockAiFallback = (): AiEnhancement => {
       const { headline, summary = '', skills } = linkedinData
       return {
-        promise: 'Grow Your Influence',
-        headline: headline || 'Leader',
-        about: summary || 'An experienced professional with a passion for innovation.',
-        interests: skills?.slice(0, 5).map(s => s.name) || ['Innovation', 'Technology'],
-        influences: [],
-        pillars: [],
-        clout: 0,
-        goal: 'Build a personal brand.',
+        profile: {
+          hero: 'Grow Your Influence',
+          headline: headline || 'Leader',
+          summary: summary || 'An experienced professional with a passion for innovation.',
+          interests: skills?.slice(0, 5).map(s => s.name) || ['Innovation', 'Technology'],
+          influences: [],
+          pillars: [],
+          clout: 0,
+          goal: 'Build a personal brand.',
+        },
       }
     }
 
-    if (isTest) {
+    if (isTesting) {
       this.log.info('Using mock data for AI enhancement', { handle: linkedinData.public_identifier })
-      return getDefaultData()
+      return getMockAiFallback()
     }
 
     try {
@@ -215,7 +228,7 @@ export class QueryManageOnboard extends Query<FictionOnboardSettings> {
     }
     catch (error) {
       this.log.error('AI enhancement failed', { error })
-      return getDefaultData()
+      return getMockAiFallback()
     }
   }
 
@@ -242,6 +255,42 @@ export class QueryManageOnboard extends Query<FictionOnboardSettings> {
     }
   }
 
+  private async completeOnboarding(args: { userId: string, orgId: string }, meta: EndpointMeta): Promise<EndpointResponse<ProfileData>> {
+    const { userId, orgId } = args
+
+    await this.ManageOrganization.serve({ _action: 'update', where: { orgId }, fields: { onboard: { phase: 'tasks' } } }, { ...meta, server: true })
+
+    await this.ManageUser.serve({ _action: 'retrieve', where: { userId } }, { ...meta, server: true })
+
+    const [org, user] = await Promise.all([
+      this.ManageOrganization.serve({ _action: 'read', where: { orgId } }, { ...meta, server: true }).then(r => r.data),
+      this.ManageUser.serve({ _action: 'retrieve', where: { userId } }, { ...meta, server: true }).then(r => r.data),
+    ])
+
+    if (!org || !user) {
+      throw abort('Organization or user not found')
+    }
+
+    if (org.onboard?.phase !== 'tasks') {
+      throw abort('Onboarding phase is not set to tasks')
+    }
+    else {
+      this.log.info('Onboarding completed', { data: { org, user } })
+    }
+
+    const out = { org, user }
+    await this.addFictionConnections(out, meta)
+
+    await this.settings.fictionUser.hooks.run('newUserOnboarded', out)
+
+    return {
+      status: 'success',
+      message: 'Onboarding completed',
+      data: profileFromAccount({ user, org }),
+      user: out.user,
+    }
+  }
+
   private async updateProfileData(args: { userId: string, orgId: string, profile: Partial<ProfileData> }, meta: EndpointMeta) {
     const { userId, orgId, profile } = args
     const { orgFields = {}, userFields = {} } = accountFromProfile(profile)
@@ -253,17 +302,17 @@ export class QueryManageOnboard extends Query<FictionOnboardSettings> {
 
     const out = { org: orgResult?.data, user: userResult?.data }
 
-    if (profile.needsOnboarding === false) {
-      this.addFictionConnections({ userId, orgId, userEmail: userResult.data?.email || '' }, meta)
-      this.settings.fictionUser.hooks.run('newUserOnboarded', out)
-    }
-
     return out
   }
 
-  private async addFictionConnections(args: { userId: string, orgId: string, userEmail: string }, meta: EndpointMeta): Promise<void> {
-    const { userId, orgId, userEmail } = args
+  private async addFictionConnections(args: { user?: User, org?: Organization }, meta: EndpointMeta): Promise<void> {
+    const { user, org } = args
     const { fictionContact, fictionEnv } = this.settings
+
+    if (!org?.orgId)
+      throw abort('Organization is required')
+    if (!user?.email)
+      throw abort('User is required')
 
     if (!fictionContact)
       return
@@ -273,11 +322,11 @@ export class QueryManageOnboard extends Query<FictionOnboardSettings> {
 
     try {
     // Add andrew@fiction.com to user's contact list
-      await fictionContact.requests.ManageContact.request({ _action: 'create', orgId, contact: { email: andrewEmail, tags: ['fiction'], status: 'active' } }, { server: true, ...meta })
+      await fictionContact.queries.ManageContact.serve({ _action: 'create', orgId: org.orgId, contact: { email: andrewEmail, tags: ['fiction'], status: 'active' } }, { server: true, ...meta })
 
       // Subscribe user to Fiction's system org
       if (systemOrgId) {
-        await fictionContact.requests.ManageContact.request({ _action: 'create', orgId: systemOrgId, contact: { email: userEmail, userId, tags: ['fiction'], status: 'active' } }, { server: true, ...meta })
+        await fictionContact.queries.ManageContact.serve({ _action: 'create', orgId: systemOrgId, contact: { email: user.email, tags: ['fiction'], status: 'active' } }, { server: true, ...meta })
       }
     }
     catch (error) {

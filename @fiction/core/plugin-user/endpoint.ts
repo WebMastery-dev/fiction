@@ -4,13 +4,13 @@ import type { FictionEmail } from '../plugin-email/index.js'
 import type { FictionEnv } from '../plugin-env/index.js'
 import type { EndpointResponse } from '../types/index.js'
 import type { EndpointMeta } from '../utils/endpoint.js'
-import type { FictionUser, OnboardSettings, Organization } from './index.js'
-import type { User } from './types.js'
+import type { FictionUser } from './index.js'
+import type { OnboardSettings, User } from './types.js'
 import { Query } from '../query.js'
 import { standardTable as t } from '../tbl.js'
 import { getGeoFree } from '../utils/geo.js'
 import { ensureUniqueHandle } from '../utils/handle.js'
-import { abort, dayjs, getRequestIpAddress } from '../utils/index.js'
+import { abort, dayjs, deepMerge, getRequestIpAddress } from '../utils/index.js'
 import { checkPasswordIsComplicated, comparePassword, defaultOrgName, emailExists, getCode, hashPassword, validateNewEmail, verifyCode } from './utils/index.js'
 
 export type UserQuerySettings = {
@@ -28,7 +28,7 @@ export abstract class UserBaseQuery extends Query<UserQuerySettings> {
 
 export type WhereUser = { email: string } | { userId: string } | { handle: string } | { googleId: string }
 
-type CreateUserFields = Partial<User> & { email: string, password?: string, orgName?: string, orgId?: string }
+export type CreateUserFields = Partial<User> & { email: string, password?: string, name?: string, orgId?: string, onboard?: OnboardSettings }
 
 export type ManageUserParams =
   | { _action: 'create', fields: CreateUserFields, withGeo?: boolean }
@@ -39,11 +39,10 @@ export type ManageUserParams =
   | { _action: 'verifyEmail', email: string, code: string, password?: string }
   | { _action: 'requestCode', where: WhereUser, context?: string }
   | { _action: 'getUserWithToken', token: string, code?: string }
-  | { _action: 'login', where: WhereUser, password?: string, createUserFields?: Partial<User>, createOnEmpty?: boolean }
-  | { _action: 'loginGoogle', credential?: string, code?: string, createUserFields?: Partial<User>, createOnEmpty?: boolean }
+  | { _action: 'login', where: WhereUser, password?: string, createUserFields?: Partial<CreateUserFields>, createOnEmpty?: boolean }
+  | { _action: 'loginGoogle', credential?: string, code?: string, createUserFields?: Partial<CreateUserFields>, createOnEmpty?: boolean }
   | { _action: 'loginWithCode', where: WhereUser, code: string, newPassword?: string, keepCode?: boolean }
   | { _action: 'event', eventName: 'resetPassword', where: WhereUser }
-  | { _action: 'manageOnboard', settings: OnboardSettings, orgId?: string, userId?: string }
 
 export type ManageUserResponse = EndpointResponse<User> & {
   isNew?: boolean
@@ -61,10 +60,12 @@ export class QueryManageUser extends UserBaseQuery {
     const { fictionUser } = this.settings
 
     const { _action } = params
+
     switch (_action) {
-      case 'retrieve':
+      case 'retrieve':{
         user = await this.getUser(params, meta)
         break
+      }
       case 'create': {
         user = await this.createUser(params, meta)
         isNew = true
@@ -122,9 +123,7 @@ export class QueryManageUser extends UserBaseQuery {
       case 'event':
         user = await this.handleUserEvent(params, meta)
         break
-      case 'manageOnboard':
-        user = await this.manageOnboard(params, meta)
-        break
+
       default:
         return { status: 'error', message: 'Invalid action', isNew }
     }
@@ -181,7 +180,10 @@ export class QueryManageUser extends UserBaseQuery {
     // User doesn't exist - create if email provided
     const { email } = where as { email?: string }
     if (email) {
-      const fields: CreateUserFields = { needsOnboarding: true, ...createUserFields, email }
+    // Ensure onboard is properly merged
+      const defaultFields = { email, onboard: { phase: 'initial' } } as const
+      const fields = deepMerge([defaultFields, createUserFields || {}]) as CreateUserFields
+
       user = await this.createUser({ _action: 'create', fields }, { ..._meta, server: true })
       return { user, isNew: true }
     }
@@ -330,31 +332,40 @@ export class QueryManageUser extends UserBaseQuery {
     return user
   }
 
-  private async createDefaultOrganization(fields: CreateUserFields, meta: EndpointMeta): Promise<Organization> {
+  private async createDefaultOrganization(fields: CreateUserFields, meta: EndpointMeta) {
     const { fictionUser } = this.settings
-    const { userId, email, orgId, needsOnboarding } = fields
-
+    const { userId, email, orgId, onboard } = fields
+    const db = this.db()
     if (!userId)
       throw abort('userId required to make default org')
 
-    const orgName = fields.orgName || fields.fullName || defaultOrgName(email)
+    const name = fields.name || fields.fullName || defaultOrgName(email)
+
+    const createFields = {
+      name,
+      email,
+      orgId,
+      onboard,
+      ownerId: userId,
+    }
 
     const response = await fictionUser.queries.ManageOrganization.serve(
       {
         _action: 'create',
         userId,
-        fields: { orgName, orgEmail: email, orgId, needsOnboarding, ownerId: userId },
+        fields: createFields,
         withDefaults: true,
       },
       { server: true, ...meta },
     )
 
     const org = response.data
-
-    if (!org)
+    if (!org?.orgId)
       throw abort('problem creating default org')
 
-    return org
+    const [user] = await db(t.user).update({ loadOrgId: org?.orgId, primaryOrgId: org?.orgId }).where({ userId }).returning<User[]>('*')
+
+    return { user, org }
   }
 
   private async updateCurrentUser(params: ManageUserParams & { _action: 'updateCurrentUser' }, meta: EndpointMeta): Promise<User | undefined> {
@@ -409,7 +420,8 @@ export class QueryManageUser extends UserBaseQuery {
 
     const table = t.user
     const verify = { code: getCode(), expiresAt: dayjs().add(1, 'day').toISOString(), context: 'create' }
-    const insertFields = fictionDb.prep({ type: 'internal', fields: { ...fields, verify }, meta: { server: true }, table })
+    const f = deepMerge([fields, { verify }])
+    const insertFields = fictionDb.prep({ type: 'internal', fields: f, meta: { server: true }, table })
 
     const [user] = await db.insert(insertFields).into(table).returning<User[]>('*')
 
@@ -591,13 +603,14 @@ export class QueryManageUser extends UserBaseQuery {
 
       // this ensures that a user has at least one org
       if (orgsResponse.status === 'success' && !hasOrgs) {
-        const p = params as ManageUserParams & { _action: 'create' }
-        const orgName = p.fields?.orgName
-        const orgId = p.fields?.orgId
-        const r = await this.createDefaultOrganization({ email: user.email as string, ...user, orgName, orgId }, meta)
+        const p = params as ManageUserParams & { _action: 'create', createUserFields?: CreateUserFields }
+        const createFields = deepMerge([p.fields || p.createUserFields, { email: user.email, userId: user.userId }]) as CreateUserFields
+        const { org } = await this.createDefaultOrganization(createFields, meta)
 
-        if (r)
-          user.orgs = [r]
+        if (org) {
+          user.orgs = [org, ...(user.orgs || [])]
+          user.loadOrgId = org.orgId
+        }
       }
     }
 
@@ -611,27 +624,5 @@ export class QueryManageUser extends UserBaseQuery {
       response.user = user
 
     return response
-  }
-
-  async manageOnboard(params: ManageUserParams & { _action: 'manageOnboard' }, _meta: EndpointMeta): Promise<User | undefined> {
-    const { settings, orgId, userId } = params
-    const columnKey = 'onboard'
-    const newSettings = JSON.stringify(settings)
-
-    const setter = this.db().raw(
-      `jsonb_merge_patch(${columnKey}::jsonb, ?::jsonb)`,
-      [newSettings],
-    )
-
-    if (!orgId && !userId)
-      throw new Error('orgId or userId required')
-
-    const [responseUser] = await this.db()
-      .table(t.user)
-      .update({ onboard: setter })
-      .where({ userId })
-      .returning<User[]>('*')
-
-    return responseUser
   }
 }

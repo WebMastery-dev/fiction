@@ -89,10 +89,10 @@ async function requestSubscription() {
 const details = vue.computed<PostObject>(() => {
   const org = site.value?.org.value
   const config = uc.value
-  const name = org?.orgName
+  const name = org?.name
   return {
     title: config?.title || name,
-    subTitle: config?.subTitle || org?.about || `Stay updated with the latest from ${name || 'this publication'}.`,
+    subTitle: config?.subTitle || org?.profile?.summary || `Stay updated with the latest from ${name || 'this publication'}.`,
     media: org?.avatar,
     theme: 'primary',
   }

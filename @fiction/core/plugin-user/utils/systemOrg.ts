@@ -12,8 +12,34 @@ export async function setupSystemOrg(args: { fictionUser: FictionUser }) {
   if (!email || !name)
     throw new Error('No email or name for app')
 
+  const adminList = [email, ...(admins || [])]
+
+  const adminUsers = await Promise.all(adminList.map(async (email) => {
+    const { data: admin } = await fictionUser.queries.ManageUser.serve(
+      {
+        _action: 'getCreate',
+        where: { email },
+        createUserFields: {
+          onboard: { phase: 'initial' },
+          isSuperAdmin: true,
+          emailVerified: true,
+          systemRole: 'admin',
+        },
+      },
+      { server: true },
+    )
+
+    return admin
+  }))
+
+  const ownerId = adminUsers[0]?.userId
+
+  if (!ownerId) {
+    throw new Error('No ownerId found for system org setup')
+  }
+
   const r = await fictionUser.queries.ManageOrganization.serve(
-    { _action: 'create', fields: { orgId: systemOrgId, orgName: name, orgEmail: email } },
+    { _action: 'create', fields: { orgId: systemOrgId, name, email, ownerId } },
     { server: true },
   )
 
@@ -22,22 +48,15 @@ export async function setupSystemOrg(args: { fictionUser: FictionUser }) {
     throw new Error(`System org ID mismatch: ${orgId} !== ${systemOrgId}`)
   }
 
-  const adminList = [email, ...(admins || [])]
-
   // Create admins and track valid member IDs
   const validMemberIds: string[] = []
-  await Promise.all(adminList.map(async (email) => {
-    const { data: admin } = await fictionUser.queries.ManageUser.serve(
-      { _action: 'getCreate', where: { email }, createUserFields: { needsOnboarding: true } },
-      { server: true },
-    )
-
-    if (admin?.userId) {
-      validMemberIds.push(admin.userId)
+  await Promise.all(adminUsers.map(async (user) => {
+    if (user?.userId) {
+      validMemberIds.push(user.userId)
       await fictionUser.queries.ManageMemberRelation.serve({
         _action: 'create',
         orgId,
-        fields: { userId: admin.userId, memberAccess: 'admin', memberStatus: 'active' },
+        fields: { userId: user.userId, access: 'admin', status: 'active' },
       }, { server: true })
     }
   }))

@@ -75,7 +75,7 @@ export class QueryManageCustomer extends StripeEndpoint {
     }
 
     if (!liveStripe) {
-      org.customerId = org.customerIdTest
+      org.billing = { ...org.billing, customerId: org.billing?.customerIdTest }
     }
 
     return org
@@ -92,11 +92,11 @@ export class QueryManageCustomer extends StripeEndpoint {
 
     const org = await this.getOrgData({ orgId, caller }, meta)
 
-    if (!org.customerId)
+    if (!org.billing?.customerId)
       return
 
     try {
-      return await stripe.customers.retrieve(org.customerId) as Stripe.Customer & { deleted?: boolean }
+      return await stripe.customers.retrieve(org.billing?.customerId) as Stripe.Customer & { deleted?: boolean }
     }
     catch (error) {
       this.log.error('Payment API Error: Failed to retrieve customer from OrgData', { error, org })
@@ -110,7 +110,7 @@ export class QueryManageCustomer extends StripeEndpoint {
 
     const org = await this.getOrgData({ orgId, caller }, _meta)
 
-    const { orgEmail: email, orgName: name } = org
+    const { email, name } = org
 
     const customer = await this.stripe().customers.create({
       email,
@@ -216,21 +216,21 @@ export class QueryManageCustomer extends StripeEndpoint {
     return { status: 'success', data: customerData }
   }
 
+  dbMergeJsonData(column: string, mergeData: object) {
+    return this.db().raw(`COALESCE(??, '{}') || ?`, [column, JSON.stringify(mergeData)])
+  }
+
   private async saveCustomerIdToOrg(args: {
     orgId: string
     customerId?: string | null
   }, _meta: EndpointMeta): Promise<void> {
     const { orgId, customerId } = args
     const liveStripe = this.settings.fictionStripe.stripeMode.value === 'live'
+    const billingKey = liveStripe ? 'customerId' : 'customerIdTest'
 
-    const save: Record<string, string | null> = {}
-    if (typeof customerId !== 'undefined') {
-      save[liveStripe ? 'customerId' : 'customerIdTest'] = customerId
-    }
-
-    this.log.info('Saving customerId to org', { data: { orgId, ...save } })
-
-    await this.db().update(save).from(standardTable.org).where({ orgId })
+    await this.db().from(standardTable.org).where({ orgId }).update({
+      billing: this.dbMergeJsonData('billing', { [billingKey]: customerId }),
+    })
   }
 }
 

@@ -3,7 +3,7 @@ import type { StockMedia } from '@fiction/ui/stock/index.js'
 import { cardConfig } from '@fiction/cards/index.js'
 import ImageAndrew from './img/andrew.jpg'
 import ImageBrian from './img/brian.jpg'
-import ImageDean from './img/dean2.jpg'
+import ImageDean from './img/dean-profile.webp'
 import ImageMorgan from './img/morgan.jpg'
 import ImageSelena from './img/selena.jpg'
 
@@ -20,8 +20,8 @@ export async function getHomePage(args: { factory: CardFactory, stock: StockMedi
     priority: 50,
     userConfig: {
       standard: {
-        title: 'Your Digital Self in 3 Minutes',
-        description: 'Create a personal brand that displays your ideal digital self. Build an AI-enhanced personal brand and professional network with Fiction.',
+        title: 'Create Your Personal Website in 3 Minutes',
+        description: 'Fiction helps you create a personal website, newsletter, and content hub in minutes.',
       },
     },
     cards: [
@@ -34,20 +34,20 @@ export async function getHomePage(args: { factory: CardFactory, stock: StockMedi
               items: [
                 {
                   superTitle: {
-                    text: 'Your Personal Brand Made Easy',
-                    icon: { class: 'i-tabler-trending-up' },
+                    theme: 'orange',
+                    text: 'Built for Leaders and Creators',
+                    icon: { class: 'i-tabler-book' },
                   },
-                  title: `Your Digital Presence in Under [@text_effect type=line]3 Minutes[/@text_effect].`,
-                  subTitle: `Fiction is the best way to create and share your content and portfolio online. Designed for the next-generation of leaders.`,
-
+                  title: `Create Your Personal Website in [@text_effect type=line]3 Minutes[/@text_effect].`,
+                  subTitle: `Fiction is a revolutionary platform that helps you build a personal brand with AI.`,
                   action: {
                     buttons: [
                       {
-                        label: 'Create Account',
+                        label: 'Start',
                         href: '/app/auth?_reload=1',
                         theme: 'primary',
                         design: 'solid',
-                        iconAfter: 'i-tabler-arrow-big-right-lines',
+                        iconAfter: 'i-tabler-arrow-right',
                       },
                     ],
                   },
@@ -58,6 +58,7 @@ export async function getHomePage(args: { factory: CardFactory, stock: StockMedi
           cardConfig({
             templateId: 'cardMarqueeV1',
             userConfig: {
+              stagger: true,
               items: [
                 {
                   title: 'Andrew Powers',
@@ -162,8 +163,8 @@ export async function getHomePage(args: { factory: CardFactory, stock: StockMedi
                     icon: { class: 'i-tabler-rocket' },
                     text: 'AI-Optimize Your Personal Brand',
                   },
-                  title: 'Create Your Digital Self',
-                  content: 'Use Fiction to tell your story, express your expertise, and build your network.',
+                  title: 'Your Digital Self',
+                  content: 'Ready for the AI future? Use Fiction to tell your story, express your expertise, and build your network.',
                   theme: 'blue',
                   themeMode: 'dark',
                   verticalPosition: 'bottom',
@@ -180,7 +181,7 @@ export async function getHomePage(args: { factory: CardFactory, stock: StockMedi
                     buttons: [
                       {
                         label: 'Build Your Brand',
-                        href: '/app/auth/register?_reload=1',
+                        href: '/app/auth?_reload=1',
                         theme: 'overlay',
                         icon: 'i-tabler-user-circle',
                         design: 'solid',

@@ -67,7 +67,7 @@ export class FictionEmail extends FictionPlugin<FictionEmailSettings> {
     const { fileURLToPath } = await import('node:url')
     const path = await import('node:path')
 
-    const templatePath = path.join(path.dirname(fileURLToPath(import.meta.url)), 'templates', 'EmailV2.vue')
+    const templatePath = path.join(path.dirname(fileURLToPath(import.meta.url)), 'templates', 'EmailV3.vue')
 
     const renderer = await this.getNodeRenderer()
 
@@ -93,7 +93,7 @@ export class FictionEmail extends FictionPlugin<FictionEmailSettings> {
     }
 
     const EmailV2: vue.Component = this.settings.fictionEnv.isApp.value
-      ? vue.defineAsyncComponent(() => import('./templates/EmailV2.vue'))
+      ? vue.defineAsyncComponent(() => import('./templates/EmailV3.vue'))
       : await this.parseTemplateNode()
 
     const app: vue.App = vue.createSSRApp(EmailV2, emailConfig)

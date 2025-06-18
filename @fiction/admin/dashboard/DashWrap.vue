@@ -160,16 +160,16 @@ const icon = { format: 'component', el: FictionLogo } as MediaObject
         />
       </template>
       <template v-else-if="uc.layoutFormat === 'full'">
-        <ElEngine tag="div" class="h-full overflow-y-scroll" :card />
+        <ElEngine tag="div" class="h-full overflow-y-scroll no-scrollbar" :card />
       </template>
-      <div v-else class="relative min-h-0 grow overflow-scroll">
+      <div v-else class="relative min-h-0 grow overflow-scroll no-scrollbar">
         <div class="page-area h-full">
           <div
             class="work-area relative block min-h-0 w-full overflow-hidden md:flex md:h-full md:overflow-visible"
           >
             <div
               class="md:static md:flex h-dvh w-[60%] md:w-[calc(16rem+3vw)] shrink-0 md:opacity-100 will-change-auto transition-all  duration-300 border-theme-300/50 dark:border-theme-600/50 fixed top-0 z-30 justify-end border-r"
-              :class="showMobileNav ? 'left-0 opacity-100' : '-left-full opacity-0'"
+              :class="showMobileNav ? 'left-0 opacity-100 bg-theme-900/60' : '-left-full opacity-0'"
             >
               <DashNav class="md:pl-12 md:pr-4" :icon :nav="primaryNav" :card />
               <ElClose v-if="showMobileNav" class="absolute -right-16 top-4" @click="showMobileNav = false" />
@@ -191,7 +191,7 @@ const icon = { format: 'component', el: FictionLogo } as MediaObject
                 :icon
               />
               <div
-                class="mx-auto bg-theme-0 dark:bg-theme-950 grow overflow-scroll w-full"
+                class="mx-auto bg-theme-0 dark:bg-theme-950 grow overflow-scroll w-full no-scrollbar"
               >
                 <div
                   v-if="loading"

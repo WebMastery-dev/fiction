@@ -30,7 +30,7 @@ const workspaceItems = vue.computed<NavListItem[]>(() => {
   const orgs = fictionUser.activeOrganizations.value || []
 
   const orgItems = orgs.map(org => ({
-    label: org.orgName || org.handle || 'Unnamed Workspace',
+    label: org.name || org.handle || 'Unnamed Workspace',
     value: org.orgId,
     icon: { class: 'i-tabler-building' },
     isActive: org.orgId === activeOrg?.orgId,
@@ -79,12 +79,12 @@ const cls = {
 </script>
 
 <template>
-  <div class="flex h-full min-w-0 grow flex-col justify-between py-6">
+  <div class="flex h-full min-w-0 grow flex-col justify-between py-6 px-4">
     <div class="space-y-6 font-sans">
       <div class="flex items-center justify-start space-x-3">
         <div class="rounded-full flex items-center justify-start">
-          <CardLink :card href="/" class="px-2 text-xl transition-all rounded-md">
-            <XMedia class="h-[36px]" :media="icon" />
+          <CardLink :card href="/" class="px-2.5 text-xl transition-all rounded-md">
+            <XMedia class="h-[34px]" :media="icon" />
           </CardLink>
         </div>
       </div>
@@ -105,7 +105,7 @@ const cls = {
               />
               <div class="min-w-0 flex-1">
                 <div class="font-medium text-theme-900 dark:text-theme-100 truncate">
-                  {{ activeOrg?.orgName || activeOrg?.handle || 'No Workspace' }}
+                  {{ activeOrg?.name || activeOrg?.handle || 'No Workspace' }}
                 </div>
               </div>
               <XIcon

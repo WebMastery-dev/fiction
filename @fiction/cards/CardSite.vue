@@ -97,7 +97,7 @@ function getTitleTag() {
     return seoConfig.title
 
   const titleTemplate = siteConfig.value.titleTemplate || '{{pageTitle}} - {{siteTitle}}'
-  const siteTitle = org.value?.orgName || ''
+  const siteTitle = org.value?.name || ''
   const pageTitle = page.value?.title?.value || toLabel(page.value?.slug?.value) || ''
 
   return simpleHandlebarsParser(titleTemplate, { pageTitle, siteTitle })
@@ -106,7 +106,7 @@ function getTitleTag() {
 const iconUrls = vue.computed(() => getHeadIconConfig({ org: org.value }))
 
 const colors = vue.computed(() => {
-  const primaryColor = org.value?.primaryColor || 'blue'
+  const primaryColor = org.value?.branding?.primaryColor || 'blue'
   const themeColor = 'gray'
 
   return {
@@ -118,7 +118,8 @@ const colors = vue.computed(() => {
 })
 
 unhead.useHead({
-  htmlAttrs: { lang: 'en', dir: 'ltr' },
+  htmlAttrs: { lang: 'en', dir: 'ltr', class: 'dark' },
+  bodyAttrs: { class: 'dark' },
   title: () => getTitleTag(),
   meta: [
     { charset: 'UTF-8' },
@@ -157,7 +158,7 @@ unhead.useHead({
   script: () => getHeadScripts({ site: site.value }),
   style: [
     {
-      innerHTML: 'html { opacity: 0; transform: scale(.96); transition: opacity 0.7s, transform 0.7s ease; } body.dark { background: #000; }',
+      innerHTML: 'html { color-scheme: dark; opacity: 0; transform: scale(.96); transition: opacity 0.7s, transform 0.7s ease; } body.dark { background: #000; }',
     },
   ],
   noscript: () => getHeadScripts({ site: site.value, noscript: true }),
@@ -296,51 +297,45 @@ body,
 #app,
 .x-site,
 .x-engine{
+
   min-height: 100dvh;
   background-color: var(--color-theme-900, #000);
 }
 
+html.dark,
+body.dark {
+  color-scheme: dark;
+}
 // can't be on root do to variables
 .x-site{
   .x-font-title {
-    font-family: var(--font-family-title, unset);
+    font-family: var(--font-family-title, 'system-ui'), 'system-ui', sans-serif;
     letter-spacing: var(--font-letter-spacing-title, -.02em);
-    // &.font-semibold {
-    //   font-weight: var(--font-weight-title, 600);
-    // }
-    // &.font-bold {
-    //   font-weight: var(--font-weight-title, 700);
-    // }
-    // &.font-light {
-    //   font-weight: var(--font-weight-title, 300);
-    // }
-    // &.font-normal {
-    //   font-weight: var(--font-weight-title, 400);
-    // }
-    // &.font-medium {
-    //   font-weight: var(--font-weight-title, 500);
-    // }
   }
   .x-font-entry {
-    font-family: var(--font-family-entry, unset);
+    font-family: var(--font-family-entry, 'system-ui'), 'system-ui', sans-serif;
   }
   .x-font-highlight {
-    font-family: var(--font-family-highlight, unset);
+    font-family: var(--font-family-highlight, 'system-ui'), 'system-ui', sans-serif;
   }
-
   .x-font-body {
-    font-family: var(--font-family-body, unset);
+    font-family: var(--font-family-body, 'system-ui'), 'system-ui', sans-serif;
   }
   .x-font-input {
-    font-family: var(--font-family-input, unset);
+    font-family: var(--font-family-input, 'system-ui'), 'system-ui', sans-serif;
   }
   .x-font-mono {
-    font-family: var(--font-family-mono, unset);
+    font-family: var(--font-family-mono, 'monospace'), monospace;
   }
   .x-font-sans {
-    font-family: var(--font-family-sans, unset);
+    font-family: var(--font-family-sans, 'system-ui'), 'system-ui', sans-serif;
   }
 
+}
+
+iframe {
+  background-color: #030712 !important;
+  color-scheme: dark !important;
 }
 
 /* Chrome, Safari and Opera */

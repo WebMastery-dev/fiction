@@ -45,17 +45,17 @@ describe('settings e2e', async () => {
       caller: 'org-settings',
       path: '/app/settings/org',
       actions: [
-        { type: 'fill', selector: '[data-option-path="orgName"] input', text: 'Updated Org Name' },
-        { type: 'fill', selector: '[data-option-path="orgEmail"] input', text: 'updated@example.com' },
-        { type: 'fill', selector: '[data-option-path="headline"] input', text: 'Updated headline' },
+        { type: 'fill', selector: '[data-option-path="name"] input', text: 'Updated Org Name' },
+        { type: 'fill', selector: '[data-option-path="email"] input', text: 'updated@example.com' },
+        { type: 'fill', selector: '[data-option-path="profile.headline"] input', text: 'Updated headline' },
         { type: 'click', selector: '[data-test-id="saveButton"]', waitAfter: 2000 },
       ],
     })
 
     const org = await getOrg()
-    expect(org?.orgName).toBe('Updated Org Name')
-    expect(org?.orgEmail).toBe('updated@example.com')
-    expect(org?.headline).toBe('Updated headline')
+    expect(org?.name).toBe('Updated Org Name')
+    expect(org?.email).toBe('updated@example.com')
+    expect(org?.profile?.headline).toBe('Updated headline')
   })
 
   it('updates user account settings', { timeout: 60000, retry: isCi() ? 2 : 0 }, async () => {
@@ -64,7 +64,6 @@ describe('settings e2e', async () => {
       path: '/app/settings/account',
       actions: [
         { type: 'fill', selector: '[data-option-path="fullName"] input', text: 'Updated Full Name' },
-        { type: 'fill', selector: '[data-option-path="headline"] input', text: 'Updated user headline' },
         { type: 'click', selector: '[data-test-id="saveButton"]', waitAfter: 2000 },
 
       ],
@@ -72,7 +71,6 @@ describe('settings e2e', async () => {
 
     const user = await getUser()
     expect(user?.fullName).toBe('Updated Full Name')
-    expect(user?.headline).toBe('Updated user headline')
   })
 
   it('manages team members', { timeout: 60000, retry: isCi() ? 2 : 0 }, async () => {
@@ -94,7 +92,7 @@ describe('settings e2e', async () => {
       path: '/app/settings/manage-organizations',
       actions: [
         { type: 'click', selector: '[data-test-id="create-org-button"]' },
-        { type: 'fill', selector: '[data-option-path="orgName"] input', text: 'New Test Org' },
+        { type: 'fill', selector: '[data-option-path="name"] input', text: 'New Test Org' },
         { type: 'click', selector: '[data-test-id="create-workspace-button"]', waitAfter: 3000 },
       ],
     })

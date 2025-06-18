@@ -3,8 +3,10 @@ import type { ActionButton, Organization } from '@fiction/core'
 import type { Card } from '@fiction/site'
 import { gravatarUrlSync, useService, vue } from '@fiction/core'
 import { OrgSchema as schema } from '@fiction/core/plugin-user/schema'
+import { AutosaveUtility } from '@fiction/core/utils/save'
 import { createOption } from '@fiction/ui/index.js'
 import FormEngine from '@fiction/ui/inputs/FormEngine.vue'
+import { getOrgSettings } from './index.js'
 import InputApiKey from './InputApiKey.vue'
 import SettingsPanel from './SettingsPanel.vue'
 
@@ -22,7 +24,7 @@ const org = vue.computed(() => service.fictionUser.activeOrganization.value)
 
 const avatarUrl = vue.computed(() => {
   const o = org.value
-  return o?.avatar ? o?.avatar : (gravatarUrlSync(o?.orgEmail, { size: 400 }))
+  return o?.avatar ? o?.avatar : (gravatarUrlSync(o?.email, { size: 400 }))
 })
 
 const isDirty = vue.ref(false)
@@ -31,10 +33,12 @@ const initialGroupKey = vue.computed(() => {
   return card.site?.siteRouter.query.value?.tab as string | undefined
 })
 
+const orgModel = vue.ref<Organization | undefined>(org.value)
+
 async function save() {
   sending.value = 'saving'
   const endpoint = service.fictionUser.requests.ManageOrganization
-  const fields = org.value
+  const fields = orgModel.value
   const orgId = fields?.orgId
 
   if (!orgId)
@@ -42,160 +46,29 @@ async function save() {
 
   await endpoint.projectRequest({ _action: 'update', fields, where: { orgId } })
 
+  orgModel.value = service.fictionUser.activeOrganization.value
+
   isDirty.value = false
   sending.value = ''
 }
 
-function update(orgNew: Organization) {
-  service.fictionUser.activeOrganization.value = orgNew
-
-  isDirty.value = true
-}
-
-const orgHostname = vue.computed(() => {
-  const handle = org.value?.handle
-  if (!handle)
-    return ''
-
-  return `https://${handle}.fiction.com`
+const saveUtil = new AutosaveUtility({
+  onSave: () => save(),
 })
 
+function update(changedOrg: Organization) {
+  orgModel.value = changedOrg
+  saveUtil.autosave({ caller: 'updateOrg' })
+}
+
 const opts = vue.computed(() => {
+  const o = org.value
+
+  const orgOptions = getOrgSettings({ org: o })
   return [
-    createOption({
-      schema,
-      label: 'Essentials',
-      key: 'group.essentials',
-      input: 'group',
-      icon: { class: 'i-tabler-north-star' },
-      options: [
-        createOption({
-          schema,
-          key: 'orgName',
-          label: 'Name',
-          input: 'InputText',
-          placeholder: 'Enter a name',
-          isRequired: true,
-          description: 'A concise name defining your identity, displayed prominently on your profile.',
-        }),
-        createOption({
-          schema,
-          key: 'orgEmail',
-          label: 'Email',
-          input: 'InputEmail',
-          isRequired: true,
-          description: 'A primary contact email for communication and account verification.',
-        }),
-        createOption({
-          key: 'handle',
-          label: 'Handle',
-          input: 'InputHandle',
-          placeholder: 'my-handle',
-          props: { table: 'fiction_org', columns: [{ name: 'handle' }] },
-          description: 'A unique identifier for your profile, used in URLs and mentions.',
-        }),
-        createOption({
-          schema,
-          key: 'headline',
-          label: 'Headline',
-          input: 'InputUrl',
-          isRequired: true,
-          placeholder: 'Enter a headline',
-          description: 'A sharp, 220-character tagline capturing your essence, shown in search results and on your profile.',
-        }),
-        createOption({
-          schema,
-          key: 'about',
-          label: 'About',
-          input: 'InputTextarea',
-          isRequired: true,
-          placeholder: 'Enter a description',
-          description: 'A compelling 2,600-character narrative detailing your mission, values, and story.',
-        }),
-        createOption({
-          schema,
-          key: 'avatar',
-          label: 'Avatar',
-          input: 'InputMedia',
-          description: 'A signature image embodying your identity, prominently featured on your profile and in searches.',
-        }),
-        createOption({
-          schema,
-          key: 'logo',
-          label: 'Logo',
-          subLabel: 'For visual identity',
-          input: 'InputMedia',
-          description: 'An emblem reinforcing your visual identity across the platform.',
-        }),
-        createOption({
-          schema,
-          key: 'primaryColor',
-          label: 'Primary Color',
-          input: 'InputColorTheme',
-          placeholder: 'Default',
-          description: 'A defining color shaping your visual theme and consistency.',
-          props: {
-            mode: 'bright',
-          },
-        }),
-      ],
-    }),
-
-    createOption({
-      schema,
-      key: 'group.domain',
-      label: 'Domain',
-      input: 'group',
-      icon: { class: 'i-tabler-world-upload' },
-      options: [
-        createOption({
-          schema,
-          key: 'handle',
-          label: 'Fiction Domain',
-          input: 'InputHandle',
-          isRequired: true,
-          props: {
-            beforeInput: 'https://',
-            afterInput: '.fiction.com',
-            table: 'fiction_org',
-            columns: [{ name: 'handle' }],
-            uiSize: 'md',
-          },
-        }),
-        createOption({
-          key: 'customDomains',
-          label: 'Enter Custom Domain',
-          subLabel: 'Add custom domains for this site (e.g. www.example.com)',
-          input: vue.defineAsyncComponent(() => import('./CustomDomain.vue')),
-          isRequired: true,
-        }),
-        createOption({
-          key: 'domainSetupInstructions',
-          label: 'Setup Instructions',
-          input: vue.defineAsyncComponent(() => import('./CustomDomainInstructions.vue')),
-          props: {
-            destination: orgHostname.value,
-          },
-        }),
-
-      ],
-    }),
-    createOption({
-      key: 'group.social',
-      label: 'Social',
-      input: 'group',
-      icon: { class: 'i-tabler-social' },
-      options: [
-        createOption({ schema, key: 'accounts.x', label: 'X / Twitter Username', input: 'InputText', placeholder: 'username' }),
-        createOption({ schema, key: 'accounts.instagram', label: 'Instagram Username', input: 'InputText', placeholder: 'username' }),
-        createOption({ schema, key: 'accounts.linkedin', label: 'LinkedIn Username', input: 'InputText', placeholder: 'username' }),
-        createOption({ schema, key: 'accounts.facebook', label: 'Facebook Username', input: 'InputText', placeholder: 'username' }),
-        createOption({ schema, key: 'accounts.github', label: 'GitHub Username', input: 'InputText', placeholder: 'username' }),
-        createOption({ schema, key: 'accounts.youtube', label: 'YouTube Username', input: 'InputText', placeholder: 'username' }),
-        createOption({ schema, key: 'accounts.pinterest', label: 'Pinterest Username', input: 'InputText', placeholder: 'username' }),
-        createOption({ schema, key: 'accounts.tiktok', label: 'TikTok Username', input: 'InputText', placeholder: 'username' }),
-      ],
-    }),
+    orgOptions.essentials,
+    orgOptions.domain,
+    orgOptions.social,
     createOption({
       schema,
       key: 'group.additional',
@@ -206,7 +79,7 @@ const opts = vue.computed(() => {
 
         createOption({
           schema,
-          key: 'googleAnalyticsId',
+          key: 'tracking.googleAnalyticsId',
           label: 'Google Analytics ID',
           description: 'Your Measurement ID (G-XXXXXXXXXX) to enable website analytics tracking.',
           input: 'InputText',
@@ -228,7 +101,13 @@ const opts = vue.computed(() => {
       input: 'group',
       isHidden: !service.fictionUser.activeUser.value?.isSuperAdmin,
       options: [
-        createOption({ schema, key: 'specialPlan', label: 'Assign a Special Pricing Plan', input: 'InputSelect', list: ['standard', 'vip', 'non-profit'] }),
+        createOption({
+          schema,
+          key: 'billing.specialPlan',
+          label: 'Assign a Special Pricing Plan',
+          input: 'InputSelect',
+          list: ['standard', 'vip', 'non-profit'],
+        }),
         createOption({
           key: 'control.delete',
           testId: 'deleteOrg',
@@ -270,7 +149,7 @@ const opts = vue.computed(() => {
 
 const header = vue.computed(() => {
   return {
-    title: org.value?.orgName,
+    title: org.value?.name,
     subTitle: `Brand - id:${org.value?.orgId}`,
     media: avatarUrl.value,
   }
@@ -289,18 +168,19 @@ vue.onMounted(async () => {
     :action="{
       buttons: [{
         testId: 'saveButton',
-        label: isDirty ? 'Save Changes' : 'Changes Saved',
+        label: saveUtil.isDirty.value ? 'Saving' : 'Changes Saved',
         onClick: () => save(),
-        theme: isDirty ? 'primary' : 'default',
+        theme: saveUtil.isDirty.value ? 'orange' : 'primary',
+        design: 'outline',
         loading: sending === 'saving',
-        icon: isDirty ? 'i-tabler-upload' : 'i-tabler-check',
+        icon: saveUtil.isDirty.value ? 'i-tabler-rotate-clockwise' : 'i-tabler-check',
         animate: false,
       }],
     }"
     :header
   >
     <FormEngine
-      :model-value="org"
+      :model-value="orgModel"
       state-key="settingsTool"
       ui-size="lg"
       :options="opts"

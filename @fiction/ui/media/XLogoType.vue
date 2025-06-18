@@ -39,10 +39,10 @@ const activeLogo = vue.computed((): LogoObject => {
     console.error('Organization object is required for brandLogo and brandName variants')
   }
 
-  if (v === 'brandLogo' && org?.logo?.url) {
+  if (v === 'brandLogo' && org?.branding?.logo?.url) {
     return {
       variant: 'media',
-      media: org.logo,
+      media: org.branding?.logo,
     }
   }
 
@@ -50,7 +50,7 @@ const activeLogo = vue.computed((): LogoObject => {
     return {
       variant: 'typography',
       typography: {
-        label: org.orgName || 'Organization',
+        label: org.name || 'Organization',
       },
     }
   }
@@ -214,7 +214,7 @@ vue.onBeforeUnmount(() => {
       v-if="(mediaFormat === 'image' || !mediaFormat) && media?.url"
       ref="imageRef"
       :src="media.url"
-      :alt="alt || media?.alt || (org?.orgName ? `${org.orgName} logo` : 'Logo')"
+      :alt="alt || media?.alt || (org?.name ? `${org.name} logo` : 'Logo')"
       :class="imageClass"
       :style="elementStyle"
       @load="handleImageLoad"
@@ -224,7 +224,7 @@ vue.onBeforeUnmount(() => {
     <video
       v-else-if="mediaFormat === 'video' && media?.url"
       :src="media.url"
-      :alt="alt || media?.alt || (org?.orgName ? `${org.orgName} logo` : 'Logo')"
+      :alt="alt || media?.alt || (org?.name ? `${org.name} logo` : 'Logo')"
       :class="imageClass"
       autoplay
       loop
@@ -272,9 +272,9 @@ vue.onBeforeUnmount(() => {
     :data-logo-variant="variant"
     :data-media-scale="activeLogo?.scale"
   >
-    <ElAvatar v-if="org?.avatar?.url" :org class="size-[1.5em] shrink-0" />
+    <ElAvatar v-if="org?.avatar?.url" :org class="size-[1.5em] shrink-0 hidden" />
     <span :style="typographyStyle" class="min-w-0 truncate">
-      {{ activeLogo.typography?.label || (org?.orgName || 'Logo') }}
+      {{ activeLogo.typography?.label || (org?.name || 'Logo') }}
     </span>
   </div>
 </template>

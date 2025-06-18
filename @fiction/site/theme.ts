@@ -1,6 +1,7 @@
 import type { FictionAdmin } from '@fiction/admin/index.js'
 import type { ColorThemeBright, CoreServices, FictionEnv, MediaObject, Organization, ServiceList } from '@fiction/core'
 import type { CardTemplate } from './card.js'
+import type { FictionSites } from './index.js'
 import type { SiteGlobalUserConfig } from './schema.js'
 import type { SiteSettings } from './site.js'
 import type { CardConfigPortable } from './tables.js'
@@ -143,9 +144,9 @@ export class Theme<T extends Record<string, unknown> = Record<string, unknown>> 
           fonts: {
             mono: { family: 'DM Mono', stack: 'monospace' },
             input: { family: 'DM Mono', stack: 'sans' },
-            title: { stack: 'sans' },
+            title: { family: 'Poppins', stack: 'sans' },
             body: { stack: 'sans' },
-            entry: { stack: 'serif' },
+            entry: { },
             sans: { stack: 'sans' },
             serif: { stack: 'serif' },
             highlight: { family: 'Caveat', stack: 'sans' },
@@ -153,8 +154,17 @@ export class Theme<T extends Record<string, unknown> = Record<string, unknown>> 
         },
       },
       org: {
-        orgName: 'No Organization',
+        name: 'No Organization',
       },
     }
   }
+}
+
+export function getActiveThemes(args: { fictionSites: FictionSites, themes: Theme[] }) {
+  const { fictionSites, themes } = args
+  const defaultTheme = new Theme({
+    themeId: 'empty',
+    root: import.meta.url,
+    getConfig: async () => ({ userConfig: {}, pages: [], sections: {} }),
+  })
 }

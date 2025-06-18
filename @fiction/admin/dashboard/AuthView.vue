@@ -12,7 +12,7 @@ import ElInput from '@fiction/ui/inputs/ElInput.vue'
 
 // Types
 type UserConfig = { logo?: MediaObject, termsUrl?: string, privacyUrl?: string }
-type OrgData = { orgId: string, orgName: string, primaryDomain?: string }
+type OrgData = { orgId: string, name: string, primaryDomain?: string }
 
 // Props
 const props = defineProps({
@@ -27,7 +27,7 @@ const privacyUrl = vue.computed(() => userConfig.value.privacyUrl || fictionEnv.
 const form = vue.reactive({
   email: '',
   fullName: '',
-  orgName: '',
+  name: '',
   password: '',
   passwordConfirm: '',
   oneTimeCode: '',
@@ -142,8 +142,8 @@ const authState = vue.computed<AuthStateKey>(() => {
 
 const currentState = vue.computed(() => {
   const s = { ...states[authState.value] }
-  if (state.orgData?.orgName && s.title === 'Sign in') {
-    s.title = `Sign in to ${state.orgData.orgName}`
+  if (state.orgData?.name && s.title === 'Sign in') {
+    s.title = `Sign in to ${state.orgData.name}`
   }
   return s
 })
@@ -151,7 +151,7 @@ const currentState = vue.computed(() => {
 const isCodeConfirmState = vue.computed(() => !!currentState.value.showCodeInput)
 const isSuccessState = vue.computed(() => !!currentState.value.isSuccess)
 const pageTitle = vue.computed(() =>
-  `${state.orgData ? `${state.orgData.orgName} - ` : ''}${authState.value === 'welcome' ? 'Sign in' : 'Create account'} - ${fictionEnv.meta?.name}`)
+  `${state.orgData ? `${state.orgData.name} - ` : ''}${authState.value === 'welcome' ? 'Sign in' : 'Create account'} - ${fictionEnv.meta?.name}`)
 
 // Lifecycle hooks
 vue.onMounted(() => {
@@ -301,7 +301,7 @@ async function sendOneTimeCode(next: AuthStateKey, args: { caller?: string } = {
   const response = await fictionUser.requests.ManageUserEmail.request({
     _action: 'oneTimeCode',
     email,
-    createUserFields: { ...form, needsOnboarding: true },
+    createUserFields: { ...form, onboard: { phase: 'initial' } },
     queryVars: emailQueryVars.value || {},
     caller: 'authCard-sendOneTimeCode',
   })
@@ -320,7 +320,7 @@ async function passwordLogin() {
     where: { email: form.email },
     password: form.password,
     createOnEmpty: true,
-    createUserFields: { fullName: form.fullName, needsOnboarding: true },
+    createUserFields: { fullName: form.fullName, onboard: { phase: 'initial' } },
   })
   if (response?.status !== 'success')
     throw new Error(response?.message || 'Login failed')
@@ -382,7 +382,7 @@ async function passwordLogin() {
             >
               Verify Code
             </XButton>
-            <div class="text-theme-500 dark:text-theme-400 text-xs text-center">
+            <div class="text-theme-500 dark:text-theme-400 text-xs text-center font-sans">
               <p>Didn't receive the code?</p>
               <XButton
                 size="xs"
@@ -479,7 +479,7 @@ async function passwordLogin() {
                   Login with Password
                 </XButton>
               </div>
-              <div v-if="currentState.showTerms" class="text-xs px-4 text-pretty">
+              <div v-if="currentState.showTerms" class="text-xs px-4 text-pretty font-sans">
                 By continuing, you agree to the
                 <a class="underline hover:text-theme-600 dark:hover:text-theme-300" :href="termsUrl" target="_blank">Terms</a>
                 and

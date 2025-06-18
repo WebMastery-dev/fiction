@@ -11,17 +11,10 @@ export function getSiteOptions(args: { card: Card }) {
     global: createOption({
       schema: SiteSchema,
       key: 'siteGlobal',
-      label: 'Metatags',
+      label: 'Settings',
       input: 'group',
       icon: { class: 'i-tabler-world-latitude' },
       options: [
-        createOption({
-          schema: SiteSchema,
-          key: 'title',
-          label: 'Site Title',
-          input: 'InputText',
-          isRequired: true,
-        }),
         createOption({
           key: 'about',
           label: 'Workspace Settings',
@@ -152,8 +145,9 @@ export function getPageOptions(args: {
       input: 'InputHandle',
       placeholder: 'page-slug',
       isRequired: true,
+      disabled: page?.isHome,
       props: {
-        beforeInput: `example.com/`,
+        beforeInput: `site.com/`,
         table: t.pages,
         columns: [
           { name: 'slug', allowReserved: true },

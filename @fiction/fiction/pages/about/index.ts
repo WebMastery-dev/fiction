@@ -1,9 +1,8 @@
 import type { MapUserConfig } from '@fiction/cards/user/maps'
 import { cardConfig } from '@fiction/cards'
 import ImageOffice from './img/fiction-office.webp'
-import ImageGirlComputer from './img/girl-computer.webp'
-import ImagePro from './img/pro.webp'
 import ImageAndrew from './img/team-ap.webp'
+import ImageDean from './img/team-ds.webp'
 import ImageMorgan from './img/team-mj.webp'
 
 export async function getAboutPage() {
@@ -25,54 +24,6 @@ export async function getAboutPage() {
             url: ImageOffice,
           },
           layout: 'justify',
-        },
-      ],
-    },
-  })
-
-  const missionHeroCard = cardConfig({
-    templateId: 'cardHeroV1',
-    userConfig: {
-      items: [
-        {
-          superTitle: {
-            icon: { class: 'i-tabler-x' },
-            text: 'The Struggle',
-            theme: 'red',
-          },
-          title: `“This Feels Impossible”`,
-          subTitle: `74% of professionals have no online presence. Clunky tools, tech overwhelm, and fear of looking unprofessional stop them cold.`,
-
-          media: {
-            format: 'image',
-            url: ImageGirlComputer,
-          },
-          layout: 'left',
-          action: { buttons: [] },
-        },
-      ],
-    },
-  })
-
-  const missionHeroCard2 = cardConfig({
-    templateId: 'cardHeroV1',
-    userConfig: {
-      items: [
-        {
-          superTitle: {
-            icon: { class: 'i-tabler-users' },
-            text: 'Our Promise',
-            theme: 'green',
-          },
-          title: `Authentic Presence, Made Simple`,
-          subTitle: `You're not a tech expert, and you shouldn't have to be. Fiction lets you create a polished, authentic digital identity with ease—no coding, no stress.`,
-
-          media: {
-            format: 'image',
-            url: ImagePro,
-          },
-          layout: 'right',
-          action: { buttons: [] },
         },
       ],
     },
@@ -119,6 +70,23 @@ export async function getAboutPage() {
             }],
           },
         },
+        {
+          title: 'Dean Stoecker',
+          subTitle: 'Special Advisor',
+          content: `Dean, a visionary in AI and data, guides Fiction's strategic direction with his wealth of experience.`,
+          media: {
+            format: 'image',
+            url: ImageDean,
+          },
+          action: {
+            buttons: [{
+              label: 'LinkedIn',
+              theme: 'cyan',
+              icon: { class: 'i-tabler-brand-linkedin' },
+              href: 'https://www.linkedin.com/in/dean-stoecker',
+            }],
+          },
+        },
       ],
       layout: 'mediabox',
     },
@@ -155,8 +123,6 @@ export async function getAboutPage() {
         templateId: 'cardPageAreaV1',
         cards: [
           topHeroCard,
-          missionHeroCard,
-          missionHeroCard2,
           teamCard,
           mapCard,
         ],

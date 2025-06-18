@@ -34,11 +34,11 @@ const step = vue.computed(() => {
       class="relative z-10 mx-auto w-full p-4 md:p-10 rounded-xl shadow-xl"
       :class="step.class"
     >
-      <div class="relative z-10 mb-4 flex gap-4 md:text-center md:justify-center">
+      <div class="relative z-10 mb-4 flex gap-4 text-center justify-center">
         <div class="space-y-5">
           <XSuperTitle
             v-if="step.superTitle"
-            class="md:justify-center"
+            class="justify-center"
             size="sm"
             :super-title="step.superTitle"
           />
@@ -46,7 +46,7 @@ const step = vue.computed(() => {
             <h1 class="x-font-title text-xl font-semibold antialiased">
               {{ step.title }}
             </h1>
-            <div class="text-theme-500 dark:text-theme-400 text-base antialiased">
+            <div class="text-theme-500 dark:text-theme-400 text-base antialiased font-sans">
               {{ step.subTitle }}
             </div>
           </div>
@@ -66,7 +66,7 @@ const step = vue.computed(() => {
 .next-enter-from,
 .prev-leave-to {
   opacity: 0;
-  transform: translateY(50vh);
+  transform: translateY(10vh);
 }
 .next-enter-to,
 .next-leave-from,
@@ -85,6 +85,6 @@ const step = vue.computed(() => {
 .next-leave-to,
 .prev-enter-from {
   opacity: 0;
-  transform: translateY(-50vh);
+  transform: translateY(-10vh);
 }
 </style>
